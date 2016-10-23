@@ -10,10 +10,10 @@ class filesystem (object):
     def __init__(self):
         pass
 
-    Data = "/Users/ishan/Desktop/WikiProject/Data"
+    Data = "/mnt/turbo/dromdata/wikipedia/Projects"
 
-    ContFileSystem = "/Users/ishan/Desktop/WikiProject/Time"
+    ContFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Time"
 
-    RepeatFileSystem = "/Users/ishan/Desktop/WikiProject/Repeated"
+    RepeatFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Repeated"
 
-    GapFileSystem = "/Users/ishan/Desktop/WikiProject/Gap"
+    GapFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Gap"
