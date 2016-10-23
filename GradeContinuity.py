@@ -91,7 +91,7 @@ class gradecontinuity (object):
                             and (group.ix[index[i+1]]['NewQual'].lower() in self.gradelist) and group.ix[index[i+1]]['Action'] == 'Reassessed':
 
                                 if group.ix[index[i+1]]['OldQual'] != group.ix[index[i]]['NewQual']:
-                                    notcont.append([group.ix[index[i]]['Project'], name, str(group.ix[index[i]]['Date']), group.ix[index[i]]['OldQual'],
+                                    notcont.append([group.ix[index[i]]['Project'], re.sub(',',' ',name), str(group.ix[index[i]]['Date']), group.ix[index[i]]['OldQual'],
                                                     group.ix[index[i]]['NewQual'], str(group.ix[index[i+1]]['Date']), group.ix[index[i+1]]['OldQual'],
                                                     group.ix[index[i]]['NewQual']])
 
