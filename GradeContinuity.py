@@ -35,6 +35,7 @@ class gradecontinuity (object):
         wiki = gradecontinuity()
         for file in os.listdir(self.filesystem):
             if ".csv" in file:
+
                 data = wiki.dataframe(file)
                 data = data[data['Action'] == 'Reassessed']
                 data['OldQual'].fillna("NA", inplace=True)
@@ -57,6 +58,7 @@ class gradecontinuity (object):
                                               + "," + "NewQual" + ',' + "#Entires" + '\n')
                 for key, value in repeated.iteritems():
                     if value > 1:
+
                         string = ','.join(str(v) for v in list(key)) + ',' + str(value)
                         fileout.write(string + '\n')
                 fileout.close()
@@ -67,6 +69,7 @@ class gradecontinuity (object):
         wiki = gradecontinuity()
         for file in os.listdir(self.filesystem):
             if ".csv" in file:
+
                 data = wiki.dataframe(file)
                 data['OldQual'].fillna("NA", inplace = True)
                 data['NewQual'].fillna("NA", inplace = True)
@@ -86,6 +89,7 @@ class gradecontinuity (object):
                     index = group.index.tolist()
                     if len(index) > 1:
                         for i in range(len(index)-1):
+
                             if group.ix[index[i]]['Action'] == 'Reassessed' and (group.ix[index[i]]['OldQual'].lower() in self.gradelist) \
                             and (group.ix[index[i]]['NewQual'].lower() in self.gradelist) and (group.ix[index[i+1]]['OldQual'].lower() in self.gradelist)\
                             and (group.ix[index[i+1]]['NewQual'].lower() in self.gradelist) and group.ix[index[i+1]]['Action'] == 'Reassessed':
