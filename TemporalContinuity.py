@@ -24,13 +24,16 @@ class temporalcontinuity (object):
 
         for file in os.listdir(self.filesystem):
             if '.csv' in file:
+
                 required = []
                 inputfile = os.path.join(self.filesystem, file)
                 projectData = pd.read_csv(inputfile)
                 datedict = {}
+
                 for i in projectData.index.tolist():
                     datedict[i] = parse(projectData.ix[i]['Date'])
                 dates = sorted(datedict.items(), key=lambda x: x[1])
+
                 for i in range(len(dates)-1):
                     diff = (dates[i+1][1] - dates[i][1]).days
                     if diff >= self.threshold:
