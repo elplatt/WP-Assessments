@@ -10,4 +10,4 @@ class filesystem (object):
     def __init__(self):
         pass
 
-    OutGapStat ="/Users/ishan/Desktop/WikiProjec"
+    OutGapStat ="/Users/ishan/Desktop/WikiProject"
