@@ -40,6 +40,7 @@ class gradecontinuity (object):
                 data = data[data['Action'] == 'Reassessed']
                 data['OldQual'].fillna("NA", inplace=True)
                 data['NewQual'].fillna("NA", inplace=True)
+                data = data.drop_duplicates()
                 repeated = {}
 
                 for i in data.index.tolist():

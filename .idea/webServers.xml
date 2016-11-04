@@ -3,7 +3,7 @@
   <component name="WebServers">
     <option name="servers">
       <webServer id="60604036-ce23-4f2e-9149-3d770d0a4c58" name="wiki" url="http://epico.si.umich.edu">
-        <fileTransfer host="epico.si.umich.edu" port="22" rootFolder="/mnt/turbo/dromdata/wikipedia/wiki-code" accessType="SFTP" password="dfe7dfc3dfcddfc2dfdedfd3dfeadfd9dfcbdfc3df9bdf98df99" username="vedula">
+        <fileTransfer host="epico.si.umich.edu" port="22" accessType="SFTP" password="dfe7dfc3dfcddfc2dfdedfd3dfeadfd9dfcbdfc3df9bdf98df99" username="vedula">
           <advancedOptions>
             <advancedOptions dataProtectionLevel="Private" />
           </advancedOptions>

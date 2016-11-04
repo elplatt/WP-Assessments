@@ -10,14 +10,14 @@ from GradeContinuity import gradecontinuity
 
 if __name__ == '__main__':
 
-    threshold = 60
-    timegap = temporalcontinuity(threshold)
-    timegap.timerange()
+    # threshold = 60
+    # timegap = temporalcontinuity(threshold)
+    # timegap.timerange()
 
     multiple = gradecontinuity()
     multiple.repeatedEntires()
 
-    grade = gradecontinuity()
-    grade.gradejump()
+    # grade = gradecontinuity()
+    # grade.gradejump()
 
 
