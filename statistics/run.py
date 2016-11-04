@@ -9,5 +9,5 @@ from statistics.JumpStat import jumpstat
 
 if __name__ == '__main__':
 
-    stat = jumpstat
+    stat = jumpstat()
     stat.statistics()
