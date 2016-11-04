@@ -5,12 +5,14 @@
 # File Name: GradeContinuity
 # Date: 10/16/16
 
-from csvReader import csvreader
-from FileSystem import filesystem
-from dateutil.parser import parse
-import pandas as pd
 import os
 import re
+
+import pandas as pd
+from dateutil.parser import parse
+
+from continuity.FileSystem import filesystem
+from continuity.csvReader import csvreader
 
 
 class gradecontinuity (object):

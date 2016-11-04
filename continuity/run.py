@@ -5,8 +5,7 @@
 # File Name: run
 # Date: 10/16/16
 
-from TemporalContinuity import temporalcontinuity
-from GradeContinuity import gradecontinuity
+from continuity.GradeContinuity import gradecontinuity
 
 if __name__ == '__main__':
 

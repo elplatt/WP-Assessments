@@ -5,11 +5,14 @@
 # File Name: TemporalContinuity
 # Date: 10/16/16
 
-import pandas as pd
-from dateutil.parser import parse
-from FileSystem import filesystem
 import os
 import re
+
+import pandas as pd
+from dateutil.parser import parse
+
+from continuity.FileSystem import filesystem
+
 
 class temporalcontinuity (object):
 
