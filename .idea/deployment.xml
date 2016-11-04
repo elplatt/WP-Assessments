@@ -5,7 +5,8 @@
       <paths name="wiki">
         <serverdata>
           <mappings>
-            <mapping deploy="/mnt/turbo/dromdata/wikipedia/wiki-code/code" local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/mnt/turbo/dromdata/wikipedia/wiki-code/code/continuity" local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/mnt/turbo/dromdata/wikipedia/wiki-code/code/statistics" local="$PROJECT_DIR$/statistics" web="/" />
           </mappings>
         </serverdata>
       </paths>

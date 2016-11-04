@@ -5,9 +5,9 @@
 # File Name: OutFileSystem
 # Date: 11/4/16
 
-class filesystem (object):
+class outfilesystem (object):
 
     def __init__(self):
         pass
 
-    OutGapStat ="/Users/ishan/Desktop/WikiProject"
+    OutGapStat ="/mnt/turbo/dromdata/wikipedia/wiki-code/output/statistics"

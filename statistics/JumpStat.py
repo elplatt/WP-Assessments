@@ -7,7 +7,7 @@
 
 from continuity.csvReader import csvreader
 from continuity.FileSystem import filesystem
-import rpy2.robjects.lib.ggplot2 as ggplot2
+from statistics.OutFileSystem import outfilesystem
 import pandas as pd
 import os
 
@@ -37,6 +37,9 @@ class jumpstat (object):
                             jumpCount[tup] += 1
 
         df = pd.DataFrame(jumpCount.items(), columns = ['Transition','Count'])
+        out = outfilesystem()
+        outpath = os.path.join(out.OutGapStat, "Grade_Gap_count.csv")
+        df.to_csv(outpath, index= False)
 
 
 

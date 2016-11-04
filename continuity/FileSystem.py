@@ -16,6 +16,4 @@ class filesystem (object):
 
     RepeatFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Repeated"
 
-    # GapFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Gap"
-
-    GapFileSystem = "/Users/ishan/Desktop/WikiProject/Gap"
+    GapFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Gap"
