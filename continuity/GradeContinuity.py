@@ -38,6 +38,7 @@ class gradecontinuity (object):
 
                 data = wiki.dataframe(file)
                 data = data[data['Action'] == 'Reassessed']
+                data = data[['Project', 'Date', 'Action', 'ArticleName', 'OldQual', 'NewQual']]
                 data['OldQual'].fillna("NA", inplace=True)
                 data['NewQual'].fillna("NA", inplace=True)
                 data = data.drop_duplicates()
@@ -53,7 +54,8 @@ class gradecontinuity (object):
                             repeated[(data.ix[i]['Project'], re.sub(',', ' ', data.ix[i]['ArticleName']),
                                       data.ix[i]['Action'], data.ix[i]['OldQual'], data.ix[i]['NewQual'])] += 1
 
-                outpath = os.path.join(self.outdirRepeat, file)
+                outfile = file[:-4] + '.tsv'
+                outpath = os.path.join(self.outdirRepeat, outfile)
                 fileout = open(outpath, 'w')
                 fileout.write("Project" + "," + "ArticleName" + "," + "Action" + "," + "OldQual"
                                               + "," + "NewQual" + ',' + "#Entires" + '\n')
@@ -72,10 +74,13 @@ class gradecontinuity (object):
             if ".csv" in file:
 
                 data = wiki.dataframe(file)
+                data = data[data['Action'] == 'Reassessed']
+                data = data[['Project', 'Date', 'Action', 'ArticleName', 'OldQual', 'NewQual']]
                 data['OldQual'].fillna("NA", inplace = True)
                 data['NewQual'].fillna("NA", inplace = True)
 
-                outpath = os.path.join(self.outdirGap, file)
+                outfile = file[:-4] + '.tsv'
+                outpath = os.path.join(self.outdirGap, outfile)
                 fileout = open(outpath, 'w')
                 fileout.write("Project" + "," + "ArticleName" + "," + "PrevDate" + "," + "PrevOldQual"
                               + "," + "PrevNewQual" + "," + "NextDate" + ',' + "NextOldQual" + ',' + "NextNewQual" +'\n')
@@ -91,14 +96,15 @@ class gradecontinuity (object):
                     if len(index) > 1:
                         for i in range(len(index)-1):
 
-                            if group.ix[index[i]]['Action'] == 'Reassessed' and (group.ix[index[i]]['OldQual'].lower() in self.gradelist) \
-                            and (group.ix[index[i]]['NewQual'].lower() in self.gradelist) and (group.ix[index[i+1]]['OldQual'].lower() in self.gradelist)\
-                            and (group.ix[index[i+1]]['NewQual'].lower() in self.gradelist) and group.ix[index[i+1]]['Action'] == 'Reassessed':
+                            if (group.ix[index[i]]['OldQual'].lower() in self.gradelist) \
+                            and (group.ix[index[i]]['NewQual'].lower() in self.gradelist) \
+                            and (group.ix[index[i+1]]['OldQual'].lower() in self.gradelist)\
+                            and (group.ix[index[i+1]]['NewQual'].lower() in self.gradelist):
 
                                 if group.ix[index[i+1]]['OldQual'] != group.ix[index[i]]['NewQual']:
                                     notcont.append([group.ix[index[i]]['Project'], re.sub(',',' ',name), str(group.ix[index[i]]['Date']), group.ix[index[i]]['OldQual'],
                                                     group.ix[index[i]]['NewQual'], str(group.ix[index[i+1]]['Date']), group.ix[index[i+1]]['OldQual'],
-                                                    group.ix[index[i]]['NewQual']])
+                                                    group.ix[index[i+1]]['NewQual']])
 
                     if notcont:
                         for x in notcont:
