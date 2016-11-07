@@ -5,7 +5,7 @@
 # File Name: run
 # Date: 11/4/16
 
-from statistics.JumpStat import jumpstat
+from JumpStat import jumpstat
 
 if __name__ == '__main__':
 

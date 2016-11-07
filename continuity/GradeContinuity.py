@@ -10,9 +10,8 @@ import re
 
 import pandas as pd
 from dateutil.parser import parse
-
-from continuity.FileSystem import filesystem
-from continuity.csvReader import csvreader
+from FileSystem import filesystem
+from csvReader import csvreader
 
 
 class gradecontinuity (object):
@@ -30,7 +29,6 @@ class gradecontinuity (object):
         data = csvfile.readcsv()
 
         return data
-
 
     def repeatedEntires(self):
 

@@ -5,11 +5,15 @@
 # File Name: RepeatedStat
 # Date: 11/4/16
 
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
 from continuity.csvReader import csvreader
 from continuity.FileSystem import filesystem
-from statistics.OutFileSystem import outfilesystem
+from OutFileSystem import outfilesystem
 import pandas as pd
-import os
+
 
 class jumpstat (object):
 
@@ -24,6 +28,7 @@ class jumpstat (object):
 
         for file in os.listdir(repeated):
             if ".csv" in file:
+                print file
                 filepath = os.path.join(repeated,file)
                 Istream = csvreader(filepath)
                 data = Istream.readcsv()

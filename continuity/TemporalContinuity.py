@@ -7,11 +7,9 @@
 
 import os
 import re
-
 import pandas as pd
 from dateutil.parser import parse
-
-from continuity.FileSystem import filesystem
+from FileSystem import filesystem
 
 
 class temporalcontinuity (object):
