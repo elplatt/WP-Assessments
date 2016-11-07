@@ -57,8 +57,8 @@ class gradecontinuity (object):
                 outfile = file[:-4] + '.tsv'
                 outpath = os.path.join(self.outdirRepeat, outfile)
                 fileout = open(outpath, 'w')
-                fileout.write("Project" + "," + "ArticleName" + "," + "Action" + "," + "OldQual"
-                                              + "," + "NewQual" + ',' + "#Entires" + '\n')
+                fileout.write("Project" + "\t" + "ArticleName" + "\t" + "Action" + "\t" + "OldQual"
+                                              + "\t" + "NewQual" + '\t' + "#Entires" + '\n')
                 for key, value in repeated.iteritems():
                     if value > 1:
 
@@ -82,8 +82,8 @@ class gradecontinuity (object):
                 outfile = file[:-4] + '.tsv'
                 outpath = os.path.join(self.outdirGap, outfile)
                 fileout = open(outpath, 'w')
-                fileout.write("Project" + "," + "ArticleName" + "," + "PrevDate" + "," + "PrevOldQual"
-                              + "," + "PrevNewQual" + "," + "NextDate" + ',' + "NextOldQual" + ',' + "NextNewQual" +'\n')
+                fileout.write("Project" + "\t" + "ArticleName" + "\t" + "PrevDate" + "\t" + "PrevOldQual"
+                              + "\t" + "PrevNewQual" + "\t" + "NextDate" + '\t' + "NextOldQual" + '\t' + "NextNewQual" +'\n')
 
                 for name, group in data.groupby('ArticleName'):
                     for i in group.index.tolist():

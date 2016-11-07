@@ -16,7 +16,7 @@ if __name__ == '__main__':
     multiple = gradecontinuity()
     multiple.repeatedEntires()
 
-    # grade = gradecontinuity()
-    # grade.gradejump()
+    grade = gradecontinuity()
+    grade.gradejump()
 
 
