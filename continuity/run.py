@@ -13,8 +13,8 @@ if __name__ == '__main__':
     # timegap = temporalcontinuity(threshold)
     # timegap.timerange()
 
-    multiple = gradecontinuity()
-    multiple.repeatedEntires()
+    # multiple = gradecontinuity()
+    # multiple.repeatedEntires()
 
     grade = gradecontinuity()
     grade.gradejump()

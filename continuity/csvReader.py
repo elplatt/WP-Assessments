@@ -13,10 +13,9 @@ class csvreader (object):
         self.file = file
 
     def readcsv(self):
-        projectData = pd.read_csv(self.file)
+        projectData = pd.read_csv(self.file, encoding='utf-8')
         return projectData
 
-    def readcsv(self,sep):
-        if self.sep == "\t":
-            projectData = pd.read_csv(self.file, sep="\t")
-            return projectData
+    def readtable(self, seprator):
+        projectData = pd.read_table(self.file, encoding='utf-8', sep=seprator)
+        return projectData

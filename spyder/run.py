@@ -9,5 +9,8 @@ from Crawler import crawler
 
 if __name__ == '__main__':
 
-    webCrawler = crawler()
+
+
+    webCrawler = crawler("/Users/ishan/Desktop/WikiProject/projects.tsv")
+    webCrawler.getLatestTime()
     webCrawler.crawl()
