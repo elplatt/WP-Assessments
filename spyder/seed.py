@@ -2,13 +2,15 @@
 # Author: Shailesh Vedula
 # Advisors: Dr.Daniel Romero, Dr. Ceren Budak
 # Affiliation: Industrial and Operations Engineering, University of Michigan, Ann Arbor
-# File Name: run
-# Date: 11/10/16
+# File Name: seed
+# Date: 11/16/16
 
-from Crawler import crawler
+from Seeder import seeder
 
 if __name__ == '__main__':
 
-    webCrawler = crawler("/Users/ishan/Desktop/WikiProject/projects.tsv")
-    webCrawler.getLatestTime()
-    webCrawler.crawl()
+    latest = seeder("/Users/ishan/Desktop/WikiProject/projects.tsv")
+    latest.getLatestTime()
+
+
+
