@@ -5,9 +5,14 @@
 # File Name: run
 # Date: 11/10/16
 
+import os
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
 from Crawler import crawler
+from continuity.FileSystem import filesystem
 
 if __name__ == '__main__':
-
-    webCrawler = crawler("/Users/ishan/Desktop/WikiProject/projects.tsv")
+    webCrawler = crawler(filesystem.ProjectTSV)
     webCrawler.crawl()

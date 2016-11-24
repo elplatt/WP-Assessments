@@ -20,8 +20,10 @@ class filesystem (object):
 
     GapFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Gap"
 
-    HistoryFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/History"
+    # HistoryFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/History"
 
     CrawledFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Crawled"
 
     HistoryFileSystem = "/Users/ishan/Desktop/WikiProject/History"
+
+    ProjectTSV = "/Users/ishan/Desktop/WikiProject/projects1.tsv"
