@@ -9,8 +9,6 @@ from Seeder import seeder
 
 if __name__ == '__main__':
 
-    latest = seeder("/Users/ishan/Desktop/WikiProject/projects.tsv")
+    # latest = seeder("/mnt/turbo/dromdata/wikipedia/projects.tsv")
+    latest = seeder("/Users/ishan/Desktop/WikiProject/projects1.tsv")
     latest.getLatestTime()
-
-
-
