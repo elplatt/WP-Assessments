@@ -25,7 +25,7 @@ class replacews(object):
         for i in self.projectData.index.tolist():
             self.projectData.loc[i, 'Title'] = re.sub(' ', '_', self.projectData.loc[i, 'Title'])
 
-        self.projectData.to_csv(self.filepath, index=False, sep='\t')
+        self.projectData.to_csv(self.filepath, index=False, sep='\t', encoding='utf-8')
 
 if __name__ == '__main__':
 

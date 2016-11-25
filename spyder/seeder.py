@@ -38,7 +38,7 @@ class seeder(object):
                 data = data.sort('Date')
 
                 history = filesystem.HistoryFileSystem
-                outpath = os.path.join(history, file)
+                outpath = os.path.join(history, file.split('.')[0]+'.tsv')
                 fileout = open(outpath, 'w')
                 fileout.write('LatestTimeStamp' + '\n')
 
