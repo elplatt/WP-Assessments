@@ -10,9 +10,9 @@ class filesystem (object):
     def __init__(self):
         pass
 
-    Data = "/mnt/turbo/dromdata/wikipedia/Projects"
+    # Data = "/mnt/turbo/dromdata/wikipedia/Projects"
 
-    # Data = "/Users/ishan/Desktop/WikiProject/Data1"
+    Data = "/Users/ishan/Desktop/WikiProject/Data1"
 
     ContFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Time"
 
@@ -20,14 +20,14 @@ class filesystem (object):
 
     GapFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Gap"
 
-    HistoryFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/History"
+    # HistoryFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/History"
+    #
+    # CrawledFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Crawled"
 
-    CrawledFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Crawled"
+    CrawledFileSystem = "/Users/ishan/Desktop/WikiProject/Crawled"
 
-    # CrawledFileSystem = "/Users/ishan/Desktop/WikiProject/Crawled"
+    HistoryFileSystem = "/Users/ishan/Desktop/WikiProject/History"
 
-    # HistoryFileSystem = "/Users/ishan/Desktop/WikiProject/History"
+    ProjectTSV = "/Users/ishan/Desktop/WikiProject/projects1.tsv"
 
-    # ProjectTSV = "/Users/ishan/Desktop/WikiProject/projects1.tsv"
-
-    ProjectTSV = "/mnt/turbo/dromdata/wikipedia/projects.tsv"
+    # ProjectTSV = "/mnt/turbo/dromdata/wikipedia/projects.tsv"
