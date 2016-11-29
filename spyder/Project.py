@@ -24,7 +24,12 @@ class project(object):
         filein.write('Title'+'\n')
 
         for file in os.listdir(filesystem.Data):
-            project = file.split('.')
-            filein.write(project + '\n')
+            if '.csv' in file:
+                name = file.split('.')
+                filein.write(name[0] + '\n')
         filein.close()
+
+if __name__ == '__main__':
+
+    project.list()
 
