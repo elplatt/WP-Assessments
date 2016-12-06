@@ -20,14 +20,24 @@ class filesystem (object):
 
     GapFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Gap"
 
-    # HistoryFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/History"
-    #
-    # CrawledFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Crawled"
+    HistoryFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/History"
 
-    CrawledFileSystem = "/Users/ishan/Desktop/WikiProject/Crawled"
+    CrawledFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Crawled"
 
-    HistoryFileSystem = "/Users/ishan/Desktop/WikiProject/History"
+    # CrawledFileSystem = "/Users/ishan/Desktop/WikiProject/Crawled"
 
-    ProjectTSV = "/Users/ishan/Desktop/WikiProject/projects1.tsv"
+    # HistoryFileSystem = "/Users/ishan/Desktop/WikiProject/History"
 
-    # ProjectTSV = "/mnt/turbo/dromdata/wikipedia/projects.tsv"
+    # ProjectTSV = "/Users/ishan/Desktop/WikiProject/projects1.tsv"
+
+    ProjectTSV = "/mnt/turbo/dromdata/wikipedia/projects_modified.tsv"
+
+    LogFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Log"
+
+    LogFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/LOG"
+
+    CrawlLogFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Crawl-Log"
+
+    CrawlHTMLFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Crawl-HTML"
+
+    OutputFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output"
