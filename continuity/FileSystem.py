@@ -20,24 +20,31 @@ class filesystem (object):
 
     GapFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Gap"
 
-    HistoryFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/History"
+    # HistoryFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/History"
+    #
+    # CrawledFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Crawled"
 
-    CrawledFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Crawled"
+    CrawledFileSystem = "/Users/ishan/Desktop/WikiProject/Crawled"
 
-    # CrawledFileSystem = "/Users/ishan/Desktop/WikiProject/Crawled"
+    HistoryFileSystem = "/Users/ishan/Desktop/WikiProject/History"
 
-    # HistoryFileSystem = "/Users/ishan/Desktop/WikiProject/History"
+    ProjectTSV = "/Users/ishan/Desktop/WikiProject/projects1.tsv"
 
-    # ProjectTSV = "/Users/ishan/Desktop/WikiProject/projects1.tsv"
+    # ProjectTSV = "/mnt/turbo/dromdata/wikipedia/projects_modified.tsv"
 
-    ProjectTSV = "/mnt/turbo/dromdata/wikipedia/projects_modified.tsv"
+    # LogFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/LOG"
+    #
+    # CrawlLogFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Crawl-Log"
+    #
+    # CrawlHTMLFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Crawl-HTML"
+    #
+    # OutputFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output"
 
-    LogFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Log"
 
-    LogFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/LOG"
+    LogFileSystem = "/Users/ishan/Desktop/WikiProject/LOG"
 
-    CrawlLogFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Crawl-Log"
+    CrawlLogFileSystem = "/Users/ishan/Desktop/WikiProject/Crawl-Log"
 
-    CrawlHTMLFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Crawl-HTML"
+    CrawlHTMLFileSystem = "/Users/ishan/Desktop/WikiProject/Crawl-HTML"
 
-    OutputFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output"
+    OutputFileSystem = "/Users/ishan/Desktop/WikiProject/output"

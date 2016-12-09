@@ -38,10 +38,17 @@ class seeder(object):
                 data = data.sort('Date')
 
                 history = filesystem.HistoryFileSystem
-                outpath = os.path.join(history, file.split('.')[0]+'.tsv')
-                fileout = open(outpath, 'w')
-                fileout.write('LatestTimeStamp' + '\n')
+                crawllog = filesystem.CrawlLogFileSystem
+                outpath1 = os.path.join(history, file.split('.')[0]+'.tsv')
+                outpath2 = os.path.join(history, file.split('.')[0] + '.tsv')
+                fileout1 = open(outpath1, 'w')
+                fileout2 = open(outpath2, 'w')
+                fileout1.write('LatestTimeStamp' + '\n')
+                fileout2.write('LatestTimeStamp' + '\n')
 
                 if not data.empty:
-                    fileout.write(str(data['Date'].tolist()[-1]) + '\n')
-                fileout.close()
+                    fileout1.write(str(data['Date'].tolist()[-1]) + '\n')
+                    fileout2.write(str(data['Date'].tolist()[-1]) + '\n')
+
+                fileout1.close()
+                fileout2.close()
