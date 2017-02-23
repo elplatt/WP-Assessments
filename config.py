@@ -5,46 +5,32 @@
 # File Name: AbstractIO
 # Date: 10/16/16
 
-class filesystem (object):
+columns = [
+    'Project', 'Date', 'Action', 'ArticleName', 'OldQual',
+    'NewQual', 'OldImp', 'NewImp', 'NewArticleName', 'OldArticleLink',
+    'OldTalkLink'
+]
 
-    def __init__(self):
-        pass
+Data = "/Users/ishan/Desktop/WikiProject/Data1"
 
-    # Data = "/mnt/turbo/dromdata/wikipedia/Projects"
+ContFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Time"
 
-    Data = "/Users/ishan/Desktop/WikiProject/Data1"
+RepeatFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Repeated"
 
-    ContFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Time"
+GapFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Gap"
 
-    RepeatFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Repeated"
+CrawledFileSystem = "/Users/ishan/Desktop/WikiProject/Crawled"
 
-    GapFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Gap"
+HistoryFileSystem = "/Users/ishan/Desktop/WikiProject/History"
 
-    # HistoryFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/History"
-    #
-    # CrawledFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Crawled"
+ProjectTSV = "/Users/ishan/Desktop/WikiProject/projects1.tsv"
 
-    CrawledFileSystem = "/Users/ishan/Desktop/WikiProject/Crawled"
+# ProjectTSV = "/mnt/turbo/dromdata/wikipedia/projects_modified.tsv"
 
-    HistoryFileSystem = "/Users/ishan/Desktop/WikiProject/History"
+LogFileSystem = "/Users/ishan/Desktop/WikiProject/LOG"
 
-    ProjectTSV = "/Users/ishan/Desktop/WikiProject/projects1.tsv"
+CrawlLogFileSystem = "/Users/ishan/Desktop/WikiProject/Crawl-Log"
 
-    # ProjectTSV = "/mnt/turbo/dromdata/wikipedia/projects_modified.tsv"
+CrawlHTMLFileSystem = "/Users/ishan/Desktop/WikiProject/Crawl-HTML"
 
-    # LogFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/LOG"
-    #
-    # CrawlLogFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Crawl-Log"
-    #
-    # CrawlHTMLFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output/Crawl-HTML"
-    #
-    # OutputFileSystem = "/mnt/turbo/dromdata/wikipedia/wiki-code/output"
-
-
-    LogFileSystem = "/Users/ishan/Desktop/WikiProject/LOG"
-
-    CrawlLogFileSystem = "/Users/ishan/Desktop/WikiProject/Crawl-Log"
-
-    CrawlHTMLFileSystem = "/Users/ishan/Desktop/WikiProject/Crawl-HTML"
-
-    OutputFileSystem = "/Users/ishan/Desktop/WikiProject/output"
+OutputFileSystem = "/Users/ishan/Desktop/WikiProject/output"
