@@ -5,127 +5,75 @@
 # File Name: crawler
 # Date: 11/10/16
 
+import codecs
+from collections import OrderedDict
+import datetime
+from dateutil.parser import parse
+import logging
 import os
 import sys
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-import urllib
-from collections import OrderedDict
-
-from bs4 import BeautifulSoup
-from dateutil.parser import parse
 from subprocess import call
-import datetime
-import logging
 import traceback
 
-from continuity.FileSystem import filesystem
-from continuity.csvReader import csvreader
+from bs4 import BeautifulSoup
+import urllib
 
+# Config
+project_tsv = "data/projects-2016-10-12.utf-16-le.tsv"
+project_log = "output/%s.log"
+output = "output/"
+base_url = "https://en.wikipedia.org/"
+assessment_history_url = (
+    "https://en.wikipedia.org/w/index.php?title=Wikipedia:Version_1.0_Editorial_Team/%s_articles_by_quality_log&offset=%s&limit=500&action=history"
+)
 
-class crawler(object):
+# Load project names, ignore duplicates
+project_names = []
+unique_names = set()
+with open(project_tsv, "rb") as f:
+    lines = enumerate(f.read().decode('utf-16-le').split(u"\n"))
+    lines.next()
+    for i, line in lines:
+        if len(line) == 0:
+            continue
+        name, unique = line.split(u"\t")
+        if unique not in unique_names:
+            unique_names.add(unique)
+            project_names.append(name)
 
-    def __init__(self, filepath):
+def crawl(project):
 
-        dataframe = csvreader(filepath)
-        projectData = dataframe.readtable('\t')
-        self.projects = projectData["Title"].tolist()
-        self.limit = 1500
-
-    def crawl(self):
-
-        for count, project in enumerate(self.projects):
-
-            today_date = datetime.datetime.today()
-            today = today_date.strftime('%Y-%m-%d')
-            logPath = os.path.join(filesystem.LogFileSystem, today + '.log')
-            logging.basicConfig(filename=logPath, level=logging.DEBUG, filemode='a',
-                                format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-            logging.info("Project: {0}".format(project))
-            logging.info("Crawling project : {0}".format(project))
-            outpath = os.path.join(filesystem.CrawledFileSystem, project + '.tsv')
-            crawldir = os.path.join(filesystem.OutputFileSystem, project)
-            call(["mkdir", crawldir])
-
+    # Create log
+    logging.basicConfig(filename=(project_log % project), level=logging.DEBUG, filemode='a')
+    
+    logging.info("Getting assessment revision urls")
+    try:
+        assessment_urls = []
+        next_url = assessment_history_url % (project, "")
+        while next_url is not None:
+            # Request next page of history and parse
+            logging.info("Requesting: %s" % next_url)
+            handle = urllib.urlopen(next_url)
+            if handle.getcode() != 200:
+                logging.error("HTTP %d when fetching: %s" % (handle.getcode(), next_url))
+                raise IOError
+            gunk_bytes = handle.read()
+            soup = BeautifulSoup(gunk_bytes, 'html.parser')
+    
+            # Add url for each revision
+            revisions = soup.findAll("a", {"class": "mw-changeslist-date"})
+            for rev in revisions:
+                assessment_urls.append("%s%s" % (base_url, rev.get('href')))
+            
+            # Get next page url
             try:
-                url = "https://en.wikipedia.org/w/index.php?title=Wikipedia:Version_1.0_Editorial_Team/" \
-                      + project + "_articles_by_quality_log&offset=&limit=" + str(self.limit) + "&action=history"
-                try:
-                    handle = urllib.urlopen(url)
-                except Exception as URLNotFoundException:
-                    logging.exception("URL not found for project {0}".format(project))
-                try:
-                    gunk = handle.read()
-                except Exception as CannotReadException:
-                    logging.exception("Cannot read the html file for the project {0}".format(project))
+                next_url = base_url + soup.find("a", {"class": "mw-nextlink"}).get('href')
+            except AttributeError:
+                next_url = None
 
-                try:
-                    soup = BeautifulSoup(gunk, 'html.parser')
-                except Exception as SoupNotMadeException:
-                    logging.exception("Unable to parse")
+    except:
+        logging.error(traceback.format_exc())
+        raise
+    logging.info("Parsed %d assessment revision urls" % len(assessment_urls))
 
-                logs = soup.findAll("a", {"class": "mw-changeslist-date"})
-                date_dict = {}
-                for log in logs:
-                    link = log.get('href')
-                    logURL = "https://en.wikipedia.org/" + link
-                    try:
-                        date = parse(log.get_text().encode('utf-8').split(',')[1])
-                    except Exception as DateNotParseException:
-                        logging.exception("Unable to parse the date.")
-
-                    date_dict[date] = logURL
-
-                try:
-                    history = filesystem.HistoryFileSystem
-                    project_file = project + '.tsv'
-                    project_hist = os.path.join(history, project_file)
-                except Exception as FileNotFoundException:
-                    logging.exception("File not found")
-
-                csvHistory = csvreader(project_hist)
-
-                try:
-                    history_data = csvHistory.readtable('\t')
-                except Exception as CannotReadException:
-                    logging.exception("Pandas unable to read the tsv file")
-
-                if not history_data.empty:
-                    lastdate = parse(history_data['LatestTimeStamp'].tolist()[-1])
-                else:
-                    lastdate = parse("January 1, 1980")
-
-                temp = [x for x in sorted(date_dict.items(), key=lambda t: t[0], reverse=True) if x[0] >= lastdate]
-                required = OrderedDict(temp)
-                if required:
-                    for key, value in required.iteritems():
-
-                        requiredURL = value
-                        try:
-                            requiredHandle = urllib.urlopen(requiredURL)
-                        except Exception as URLNotFoundException:
-                            logging.exception("Cannot get the history html files for the project {0}".format(project))
-
-                        try:
-                            requiredGunk = requiredHandle.read()
-                        except Exception as CannotReadException:
-                            logging.exception("Cannot read the data fromt he html page")
-
-                        try:
-                            requiredSoup = BeautifulSoup(requiredGunk, 'html.parser')
-                        except Exception as SoupNotMadeException:
-                            logging.exception("Cannot parse the html file")
-
-                        try:
-                            htmlpath = os.path.join(filesystem.CrawlHTMLFileSystem,str(key) + '.html')
-                            fileout = open(htmlpath, 'w')
-                            fileout.write(requiredSoup.prettify(encoding='utf-8', formatter="minimal"))
-                            fileout.close()
-                        except Exception as FileNotFoundException:
-                            logging.exception("Path not found")
-            except:
-                traceback.print_exc(file=logPath)
-
-
-
+crawl("Malaysia")
