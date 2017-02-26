@@ -35,6 +35,7 @@ assessment_history_url = (
 )
 
 def crawl(project_name):
+    
     # Create log
     clean_name = project_name.replace("/", "_")
     logging.basicConfig(filename=(project_log % clean_name), level=logging.DEBUG, filemode='a')
@@ -52,6 +53,7 @@ def crawl(project_name):
     # Mark finished
     os.remove(to_crawl % clean_name)
     logging.info("Crawling complete")
+    return project_name
 
 def get_assessment_revisions(project, logging):
     
@@ -131,4 +133,6 @@ for project_name in project_names:
 
 # Create pool and start crawling
 project_pool = Pool(num_workers)
-project_pool.map(crawl, project_names)
+for result in project_pool.imap(crawl, sorted(project_names)):
+    print result
+    sys.stdout.flush()
