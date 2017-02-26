@@ -10,12 +10,14 @@ from collections import OrderedDict
 import datetime
 from dateutil.parser import parse
 import logging
-from multiprocessing import Pool, Process
+from multiprocessing import Pool, Process, Queue
 import os
 import os.path
+from Queue import Empty
 import re
 import sys
 from subprocess import call
+import time
 import traceback
 
 from bs4 import BeautifulSoup
@@ -33,7 +35,20 @@ base_url = "https://en.wikipedia.org/"
 assessment_history_url = (
     "https://en.wikipedia.org/w/index.php?title=Wikipedia:Version_1.0_Editorial_Team/%s_articles_by_quality_log&offset=%s&limit=500&action=history"
 )
-logging.basicConfig(level=logging.DEBUG, filemode='a')
+logger = logging.getLogger('crawler_main')
+handler = logging.FileHandler('output/main.log')
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
+
+def crawl_worker(project_q, logger):
+    while not project_q.empty():
+        try:
+            project_name = project_q.get(1)
+        except Empty:
+            pass
+        logger.info("Starting: %s" % project_name)
+        crawl(project_name)
+        logger.info("Finished: %s" % project_name)
 
 def crawl(project_name):
     
@@ -42,57 +57,54 @@ def crawl(project_name):
     logger = logging.getLogger(project_name)
     fh = logging.FileHandler(project_log % clean_name)
     logger.addHandler(fh)
+    logger.setLevel(logging.DEBUG)
     
     # Make sure project hasn't already been crawled
     try:
         os.stat(to_crawl % clean_name)
     except OSError:
-        logging.info("Already crawled, skipping")
+        logger.info("Already crawled, skipping")
         return
     
     try:
-        revision_urls = get_assessment_revisions(project_name, logging)
+        revision_urls = get_assessment_revisions(project_name, logger)
     except IOError:
         # Unable to get urls, return without marking finished
         return
-    crawl_revisions(project_name, revision_urls, logging)
+    crawl_revisions(project_name, revision_urls, logger)
     
     # Mark finished
     os.remove(to_crawl % clean_name)
-    logging.info("Crawling complete")
+    logger.info("Crawling complete")
     return project_name
 
-def get_assessment_revisions(project, logging):
+def get_assessment_revisions(project, logger):
     
-    logging.info("Getting assessment revision urls")
-    try:
-        assessment_urls = []
-        next_url = assessment_history_url % (project, "")
-        while next_url is not None:
-            # Request next page of history and parse
-            logging.info("Requesting: %s" % next_url)
-            handle = urllib.urlopen(next_url)
-            if handle.getcode() != 200:
-                logging.error("HTTP %d when fetching: %s" % (handle.getcode(), next_url))
-                raise IOError
-            gunk_bytes = handle.read()
-            soup = BeautifulSoup(gunk_bytes, 'html.parser')
-    
-            # Add url for each revision
-            revisions = soup.findAll("a", {"class": "mw-changeslist-date"})
-            for rev in revisions:
-                assessment_urls.append("%s%s" % (base_url, rev.get('href')))
-            
-            # Get next page url
-            try:
-                next_url = base_url + soup.find("a", {"class": "mw-nextlink"}).get('href')
-            except AttributeError:
-                next_url = None
+    logger.info("Getting assessment revision urls")
+    assessment_urls = []
+    next_url = assessment_history_url % (project, "")
+    while next_url is not None:
+        # Request next page of history and parse
+        logger.info("Requesting: %s" % next_url)
+        handle = urllib.urlopen(next_url)
+        if handle.getcode() != 200:
+            logger.error("HTTP %d when fetching: %s" % (handle.getcode(), next_url))
+            raise IOError
+        gunk_bytes = handle.read()
+        soup = BeautifulSoup(gunk_bytes, 'html.parser')
 
-    except:
-        logging.error(traceback.format_exc())
-        raise
-    logging.info("Parsed %d assessment revision urls" % len(assessment_urls))
+        # Add url for each revision
+        revisions = soup.findAll("a", {"class": "mw-changeslist-date"})
+        for rev in revisions:
+            assessment_urls.append("%s%s" % (base_url, rev.get('href')))
+        
+        # Get next page url
+        try:
+            next_url = base_url + soup.find("a", {"class": "mw-nextlink"}).get('href')
+        except AttributeError:
+            next_url = None
+
+    logger.info("Parsed %d assessment revision urls" % len(assessment_urls))
     
     return assessment_urls
 
@@ -139,7 +151,21 @@ for project_name in project_names:
             f.write(project_name.encode('utf-8'))
 
 # Create pool and start crawling
-project_pool = Pool(num_workers)
-for result in project_pool.imap(crawl, sorted(project_names)):
-    print "Finished: %s" % result
-    sys.stdout.flush()
+project_q = Queue()
+for project_name in sorted(project_names):
+    project_q.put(project_name)
+try:
+    logger.info("Creating workers")
+    workers = []
+    for i in range(num_workers):
+        p = Process(target=crawl_worker, args=(project_q, logger))
+        p.start()
+        workers.append(p)
+    while not project_q.empty():
+        time.sleep(1)
+except:
+    logger.error("Exception: %s" % str(sys.exc_info()))
+    logger.info("Stopping workers")
+    for p in workers:
+        p.terminate()
+    raise
