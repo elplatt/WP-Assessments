@@ -33,11 +33,15 @@ base_url = "https://en.wikipedia.org/"
 assessment_history_url = (
     "https://en.wikipedia.org/w/index.php?title=Wikipedia:Version_1.0_Editorial_Team/%s_articles_by_quality_log&offset=%s&limit=500&action=history"
 )
+logging.basicConfig(level=logging.DEBUG, filemode='a')
 
 def crawl(project_name):
+    
     # Create log
     clean_name = project_name.replace("/", "_")
-    logging.basicConfig(filename=(project_log % clean_name), level=logging.DEBUG, filemode='a')
+    logger = logging.getLogger(project_name)
+    fh = logging.FileHandler(project_log % clean_name)
+    logger.addHandler(fh)
     
     # Make sure project hasn't already been crawled
     try:
@@ -46,12 +50,17 @@ def crawl(project_name):
         logging.info("Already crawled, skipping")
         return
     
-    revision_urls = get_assessment_revisions(project_name, logging)
+    try:
+        revision_urls = get_assessment_revisions(project_name, logging)
+    except IOError:
+        # Unable to get urls, return without marking finished
+        return
     crawl_revisions(project_name, revision_urls, logging)
     
     # Mark finished
     os.remove(to_crawl % clean_name)
     logging.info("Crawling complete")
+    return project_name
 
 def get_assessment_revisions(project, logging):
     
@@ -131,4 +140,4 @@ for project_name in project_names:
 
 # Create pool and start crawling
 project_pool = Pool(num_workers)
-project_pool.map(crawl, project_names)
+project_pool.map(crawl, sorted(project_names))
