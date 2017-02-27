@@ -15,6 +15,7 @@ import os
 import os.path
 from Queue import Empty
 import re
+import shutil
 import sys
 from subprocess import call
 import time
@@ -31,6 +32,7 @@ project_log = "output/projects/%s/project.log"
 to_crawl = "output/to_crawl/%s"
 to_parse = "output/to_parse/%s"
 cache_dir = "output/projects/%s/cache"
+cache_tar = "output/projects_crawled/%s/cache.tgz"
 base_url = "https://en.wikipedia.org/"
 assessment_history_url = (
     "https://en.wikipedia.org/w/index.php?title=Wikipedia:Version_1.0_Editorial_Team/%s_articles_by_quality_log&offset=%s&limit=500&action=history"
@@ -84,6 +86,12 @@ def crawl(project_name):
     
     # Mark finished
     os.remove(to_crawl % clean_name)
+    logger.info("Compressing results")
+    project_cache_tar = cache_tar % clean_name
+    project_cache_dir = cache_dir % clean_name
+    subprocess.run(["tar", "-czf", project_cache_tar, project_cache_dir])
+    logger.info("Removing uncompressed results")
+    shutil.rmtree(project_cache_dir)
     logger.info("Crawling complete")
     return project_name
 
