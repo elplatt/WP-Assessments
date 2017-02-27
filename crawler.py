@@ -17,7 +17,7 @@ from Queue import Empty
 import re
 import shutil
 import sys
-from subprocess import call
+import subprocess
 import time
 import traceback
 
@@ -89,7 +89,7 @@ def crawl(project_name):
     logger.info("Compressing results")
     project_cache_tar = cache_tar % clean_name
     project_cache_dir = cache_dir % clean_name
-    subprocess.run(["tar", "-czf", project_cache_tar, project_cache_dir])
+    subprocess.call(["tar", "-czf", project_cache_tar, project_cache_dir])
     logger.info("Removing uncompressed results")
     shutil.rmtree(project_cache_dir)
     logger.info("Crawling complete")
