@@ -52,8 +52,17 @@ def crawl_worker(project_q, logger):
 
 def crawl(project_name):
     
-    # Create log
+    # Create project folder and log
     clean_name = project_name.replace("/", "_")
+    project_dir = output_dir % clean_name
+    try:
+        os.stat(project_dir)
+    except OSError:
+        os.mkdir(project_dir)
+        with open(to_crawl % clean_name, "wb") as f:
+            f.write(project_name.encode('utf-8'))
+        with open(to_parse % clean_name, "wb") as f:
+            f.write(project_name.encode('utf-8'))
     logger = logging.getLogger(project_name)
     fh = logging.FileHandler(project_log % clean_name)
     logger.addHandler(fh)
@@ -136,19 +145,6 @@ with open(project_tsv, "rb") as f:
         if unique not in unique_names:
             unique_names.add(unique)
             project_names.append(name)
-
-# Create project folders if necessary
-for project_name in project_names:
-    clean_name = project_name.replace('/','_')
-    project_dir = output_dir % clean_name
-    try:
-        os.stat(project_dir)
-    except OSError:
-        os.mkdir(project_dir)
-        with open(to_crawl % clean_name, "wb") as f:
-            f.write(project_name.encode('utf-8'))
-        with open(to_parse % clean_name, "wb") as f:
-            f.write(project_name.encode('utf-8'))
 
 # Create pool and start crawling
 project_q = Queue()
