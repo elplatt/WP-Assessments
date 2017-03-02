@@ -103,14 +103,14 @@ def get_assessment_revisions(project, logger):
     
     logger.info("Getting assessment revision urls")
     assessment_urls = []
-    next_url = assessment_history_url % (project, "")
+    enc_project = urllib.quote(project.encode('utf-8'))
+    next_url = assessment_history_url % (enc_project, "")
     while next_url is not None:
         # Request next page of history and parse
         logger.info("Requesting: %s" % next_url)
-        enc_next_url = urllib.quote(next_url.encode('utf-8'), ':/')
-        handle = urllib.urlopen(enc_next_url)
+        handle = urllib.urlopen(next_url)
         if handle.getcode() != 200:
-            logger.error("HTTP %d when fetching: %s" % (handle.getcode(), enc_next_url))
+            logger.error("HTTP %d when fetching: %s" % (handle.getcode(), next_url))
             raise IOError
         gunk_bytes = handle.read()
         soup = BeautifulSoup(gunk_bytes, 'html.parser')
@@ -139,12 +139,11 @@ def crawl_revisions(project_name, revision_urls, logging):
     except OSError:
         os.mkdir(cache_dir % clean_name)
     for url in revision_urls:
-        enc_url = urllib.quote(url.encode('utf-8'), ':/')
-        logging.info("Crawling: %s" % enc_url)
+        logging.info("Crawling: %s" % url)
         oldid = re.search(r'oldid=(\d+)', url).group()
         output_file = os.path.join(cache_dir % clean_name, "%s.html" % oldid)
-        urllib.urlretrieve(enc_url, output_file)
-        logging.info("Cached: %s" % enc_url)
+        urllib.urlretrieve(url, output_file)
+        logging.info("Cached: %s" % url)
 
 # Load project names, ignore duplicates
 project_names = []
