@@ -110,7 +110,7 @@ def get_assessment_revisions(project, logger):
         enc_next_url = urllib.quote(next_url.encode('utf-8'), ':/')
         handle = urllib.urlopen(enc_next_url)
         if handle.getcode() != 200:
-            logger.error("HTTP %d when fetching: %s" % (handle.getcode(), next_url))
+            logger.error("HTTP %d when fetching: %s" % (handle.getcode(), enc_next_url))
             raise IOError
         gunk_bytes = handle.read()
         soup = BeautifulSoup(gunk_bytes, 'html.parser')
