@@ -49,7 +49,11 @@ def crawl_worker(project_q, logger):
         except Empty:
             pass
         logger.info("Starting: %s" % project_name)
-        crawl(project_name)
+        try:
+            crawl(project_name)
+        except:
+            logger.error("Error: %s" % str(sys.exc_info()))
+            raise
         logger.info("Finished: %s" % project_name)
 
 def crawl(project_name):
@@ -103,7 +107,8 @@ def get_assessment_revisions(project, logger):
     while next_url is not None:
         # Request next page of history and parse
         logger.info("Requesting: %s" % next_url)
-        handle = urllib.urlopen(next_url)
+        enc_next_url = urllib.quote(next_url.encode('utf-8'), ':/')
+        handle = urllib.urlopen(enc_next_url)
         if handle.getcode() != 200:
             logger.error("HTTP %d when fetching: %s" % (handle.getcode(), next_url))
             raise IOError
@@ -134,11 +139,12 @@ def crawl_revisions(project_name, revision_urls, logging):
     except OSError:
         os.mkdir(cache_dir % clean_name)
     for url in revision_urls:
-        logging.info("Crawling: %s" % url)
+        enc_url = urllib.quote(url.encode('utf-8'), ':/')
+        logging.info("Crawling: %s" % enc_url)
         oldid = re.search(r'oldid=(\d+)', url).group()
         output_file = os.path.join(cache_dir % clean_name, "%s.html" % oldid)
-        urllib.urlretrieve(url, output_file)
-        logging.info("Cached: %s" % url)
+        urllib.urlretrieve(enc_url, output_file)
+        logging.info("Cached: %s" % enc_url)
 
 # Load project names, ignore duplicates
 project_names = []
