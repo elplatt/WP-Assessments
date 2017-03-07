@@ -5,195 +5,244 @@
 # File Name: crawler
 # Date: 11/10/16
 
+import calendar
+from datetime import datetime
+from dateutil.parser import parse
+import logging
 import os
 import re
 import sys
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+import traceback
+import urllib
 
 from bs4 import BeautifulSoup
 from bs4 import element
-from dateutil.parser import parse
-import datetime
 import pandas as pd
-import logging
-import traceback
 
-from continuity.FileSystem import filesystem
-from continuity.csvReader import csvreader
+# Config
+project_tsv = "data/projects-2016-10-12.utf-16-le.tsv"
+project_log = "output/projects/%s/parse.log"
+cache_dir = "output/projects/%s/cache"
+assessment_dir = "output/assessments"
 
+# Fields
+columns = [
+    'Project', 'Date', 'Action', 'ArticleName', 'OldQual',
+    'NewQual', 'OldImp', 'NewImp', 'NewArticleName', 'OldArticleLink',
+    'OldTalkLink'
+]
 
-class crawler(object):
+# Continuation message
+contd_text = "This log entry was truncated because it was too long. This entry is a continuation of the entry in the next revision of this log page."
 
-    def __init__(self, filepath):
+# Regular expressions
+date_pattern = re.compile(
+    "(January|February|March|April|May|June|July|August|September|October|November|December)"
+    "\_\d{1,2}\.2C_\d{4}")
+reassessed_simple_re = re.compile(
+    "(.+) reassessed from (.+) \((.+)\) to (.+) \((.+)\)"
+)
+reassessed_re = re.compile(
+    "(.+) \(talk\) reassessed."
+)
+reassessed_qual_re = re.compile(
+    "Quality rating changed from (\S+) to (\S+)"
+)
+reassessed_imp_re = re.compile(
+    "Importance rating changed from (\S+) to (\S+)"
+)
+added_re = re.compile(
+    "(.+) \(talk\) (.+) \((.+)\) added"
+)
+removed_re = re.compile(
+    "(.+) \(talk\) (.+) \((.+)\) removed"
+)
+renamed_simple_re = re.compile(
+    "(.+) renamed to (.+)\."
+)
+renamed_talk_re = re.compile(
+    "(.+) \(talk\) (.+) \((.+)\) renamed to (.+)"
+)
+renamed_re = re.compile(
+    "(.+) \(.+?|talk\) (.+) \((.+)\) renamed to (.+)"
+)
+def get_entry(project_name, date, item, logger):
+    text = item.get_text()
+    action = ""
+    old_qual = ""
+    new_qual = ""
+    old_imp = ""
+    new_imp = ""
+    article_name = ""
+    article_new_name = ""
+    article_old_link = ""
+    talk_old_link = ""
+    
+    m = re.match(reassessed_re, text)
+    if m:
+        action = "Reassessed"
+        article_name, = m.groups()
+        m = re.search(reassessed_qual_re, text)
+        if m:
+            old_qual, new_qual = m.groups()
+        m = re.search(reassessed_imp_re, text)
+        if m:
+            old_imp, new_imp = m.groups()            
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
+    m = re.match(reassessed_simple_re, text)
+    if m:
+        action = "Reassessed"
+        article_name, old_qual, old_imp, new_qual, new_imp = m.groups()
+        
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
+    m = re.match(added_re, text)
+    if m:
+        action = "Assessed"
+        article_name, new_qual, new_imp = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
+    m = re.match(removed_re, text)
+    if m:
+        action = "Removed"
+        article_name, old_class, old_imp = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
+    m = re.match(renamed_talk_re, text)
+    if m:
+        action = "Renamed"
+        article_name, old_class, old_imp, article_new_name = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+        
+    m = re.match(renamed_re, text)
+    if m:
+        action = "Renamed"
+        article_name, old_class, old_imp, article_new_name = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+        
+    m = re.match(renamed_simple_re, text)
+    if m:
+        action = "Renamed"
+        article_name, article_new_name = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
+    logger.error("Unrecognized format: %s" % text)
+    raise ValueError
 
-        dataframe = csvreader(filepath)
-        projectData = dataframe.readtable('\t')
-        self.projects = projectData["Title"].tolist()
-        self.limit = 1500
+def parse_date(date_string):
+    '''Convert date_string (assumed UTC) to UTC timestamp.'''
+    fmt = "%B %d, %Y"
+    try:
+        timestamp = calendar.timegm(datetime.strptime(date_string, fmt).timetuple())
+    except TypeError:
+        raise ValueError
+    return timestamp
 
-    def parse(self):
-
-        for count, project in enumerate(self.projects):
-
-            today_date = datetime.datetime.today()
-            today = today_date.strftime('%Y-%m-%d')
-            logPath = os.path.join(filesystem.LogFileSystem, today + '.log')
-            logging.basicConfig(filename=logPath, level=logging.DEBUG, filemode='a',
-                                format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-            logging.info("Project: {0}".format(project))
-            logging.info("Parsing project : {0}".format(project))
-            outpath = os.path.join(filesystem.CrawledFileSystem, project + '.tsv')
-            crawldir = os.path.join(filesystem.OutputFileSystem, project)
-            crawl_logpath = os.path.join(filesystem.CrawlLogFileSystem, project+'.tsv')
-
+def parse(project_name):
+    clean_name = project_name.replace("/", "_")
+    logger = logging.getLogger(project_name)
+    fh = logging.FileHandler(project_log % clean_name)
+    logger.addHandler(fh)
+    logger.setLevel(logging.DEBUG)
+    logger.info("Beggining parse")
+    
+    entries = {}
+    
+    # Loop through cached history pages
+    # Go newest to oldest for correct order in multi-page entries
+    pages = sorted(os.listdir(cache_dir % clean_name), reverse=True)
+    for i, page in enumerate(pages):
+        if i > 0 and i % 1000 == 0:
+            print "%d: %2.2f" % (i, (float(i) / float(len(pages))))
+        # Load html into beautifulsoup
+        with open(os.path.join(cache_dir % clean_name, page)) as f:
+            page_tree = BeautifulSoup(f.read(), 'html.parser')
+            
+        # Check whether this page is a continuation
+        p = page_tree.find(text=contd_text)
+        # If not, find the first date header
+        if p is None:
             try:
-                history = filesystem.HistoryFileSystem
-                crawlLog = filesystem.CrawlLogFileSystem
-                project_file = project + '.tsv'
-                project_hist = os.path.join(history, project_file)
-                project_crawl = os.path.join(crawlLog, project_file)
-            except Exception as FileNotFoundException:
-                logging.exception("File not found")
-
-            csvHistory = csvreader(project_hist)
-            csvCrawl = csvreader(project_crawl)
-
+                header_tags = page_tree.find_all("h3")
+                date_tags = [x for x in header_tags
+                                if x.span and x.span.get('class') == ["mw-headline"]
+                                    and 'id' in x.span.attrs
+                                    and date_pattern.match(x.span.get('id'))]
+                try:
+                    current_tag = date_tags[0]
+                except IndexError:
+                    logger.exception("No headers match pattern: %s" % page)
+                    continue
+            except Exception as TagNotFoundException:
+                logger.exception("No headers found: %s" % page)
+                continue
             try:
-                history_data = csvHistory.readtable('\t')
-                crawldata = csvCrawl.readtable('\t')
-            except Exception as CannotReadException:
-                logging.exception("Pandas unable to read the tsv file")
+                date_text = current_tag.span.get_text()
+                current_date = parse_date(date_text)
+            except ValueError:
+                logger.error("Unable to parse date: %s" % str(current_tag))
+                return
 
-            if not history_data.empty:
-                lastdate = parse(history_data['LatestTimeStamp'].tolist()[-1])
-                last_crawled = parse(crawldata['LatestTimeStamp'].tolist()[-1])
-            else:
-                lastdate = parse("January 1, 1980")
-                last_crawled = parse("January 1, 1980")
-
+        while True:            
+            # Move to next tag
             try:
-                for file in os.listdir(crawldir):
-                    crawlout = open(project_crawl, 'a')
-                    if parse(file.split('.')[0]) >= last_crawled:
-                        inpath = os.path.join(crawldir, file)
-                        filein = open(inpath, 'w')
-                        requiredSoup = BeautifulSoup(filein.read(), 'html.parser')
-                        pattern = re.compile("(January|February|March|April|May|June|July|August|September|October|November|December)"
-                            "\_\d{1,2}\.2C_\d{4}")
-
+                current_tag = current_tag.next_sibling
+            except AttributeError:
+                break
+            
+            try:
+                if current_tag.name == "h3":
+                    date_text = current_tag.span.get_text()
+                    current_date = parse_date(date_text)
+                elif current_tag.name == "ul":
+                    for item in current_tag.find_all('li'):
                         try:
-                            requiredTag = requiredSoup.find_all("h3")
-                        except Exception as TagNotFoundException:
-                            logging.exception("h3 tag not found")
+                            entry = get_entry(project_name, current_date, item, logger)
+                        except ValueError:
+                            logger.error("Error parsing: %s" % item.get_text())
+                            raise
+                            continue
+                        entries[entry[1]] = entry
+            except AttributeError:
+                continue
+    logger.info("Parse complete")
+    logger.info("Sortintg results")
+    sorted_keys = sorted(entries.keys())
+    logger.info("Writing results")
+    clean_name = urllib.quote(project_name.replace(" ", "_").encode('utf-8'))
+    with open(os.path.join(assessment_dir, "%s.csv" % clean_name)) as f:
+        f.write((u",".join(columns) + u"\n").encode('utf-8'))
+        for k in sorted_keys:
+            f.write((u",".join(entries[k]) + u"\n").encode('utf-8'))
+    logger.info("Project %s complete" % project_name)
 
-                        requiredTag = [x for x in requiredTag if x.span and x.span.get('class') == ["mw-headline"]
-                                       and 'id' in x.span.attrs and pattern.match(x.span.get('id'))]
+# Load project names, ignore duplicates
+project_names = []
+unique_names = set()
+with open(project_tsv, "rb") as f:
+    lines = enumerate(f.read().decode('utf-16-le').split(u"\n"))
+    lines.next()
+    for i, line in lines:
+        if len(line) == 0:
+            continue
+        name, unique = line.split(u"\t")
+        if unique not in unique_names:
+            unique_names.add(unique)
+            project_names.append(name)
 
-                        for i, tag in enumerate(requiredTag):
-                            requiredDate = tag.span.string
-                            project_assessment = []
-                            if requiredDate:
-                                while tag.next_sibling and parse(requiredDate) >= lastdate:
-                                    if isinstance(tag.next_sibling, element.Tag) and tag.next_sibling.name != "h3":
-                                        next_tag = tag.next_sibling
-                                        if next_tag.name == "ul":
-                                            for tag_li in next_tag.find_all("li"):
-                                                sentence = str(tag_li)
-                                                for item in tag_li.find_all("span"):
-                                                    sentence = sentence.replace(str(item), '')
-                                                for item in tag_li.find_all("b"):
-                                                    sentence = sentence.replace(str(item), '')
-                                                for item in tag_li.find_all("a"):
-                                                    sentence = sentence.replace(str(item), '')
-                                                sentence = sentence.replace('<li>', '').replace('</li>', '')
-                                                sentence = sentence.replace('()', '')
-                                                sentence = ' '.join(sentence.split())
-
-                                                bs = tag_li("b")
-                                                if bs:
-                                                    article_name = bs[0].text
-                                                if sentence == 'assessed. Importance assessed as':
-                                                    scores = [article_name, 'Assessed', '', '', '', bs[1].text, '']
-                                                elif sentence == 'assessed. Quality assessed as':
-                                                    scores = [article_name, 'Assessed', '', bs[1].text, '', '', '']
-                                                elif sentence == 'assessed. Quality assessed as Importance assessed as':
-                                                    scores = [article_name, 'Assessed', '', bs[1].text, '', bs[2].text,
-                                                              '']
-                                                elif sentence == 'reassessed. Importance rating changed from to':
-                                                    scores = [article_name, 'Reassessed', '', '', bs[1].text,
-                                                              bs[2].text, '']
-                                                elif sentence == 'reassessed. Quality assessed as Importance rating changed from to':
-                                                    scores = [article_name, 'Reassessed', '', bs[1].text, bs[2].text,
-                                                              bs[3].text, '']
-                                                elif sentence == 'reassessed. Quality rating changed from to':
-                                                    scores = [article_name, 'Reassessed', bs[1].text, bs[2].text, '',
-                                                              '', '']
-                                                elif sentence == 'reassessed. Quality rating changed from to Importance assessed as':
-                                                    scores = [article_name, 'Reassessed', bs[1].text, bs[2].text, '',
-                                                              bs[3].text, '']
-                                                elif sentence == 'reassessed. Quality rating changed from to Importance rating changed from to':
-                                                    scores = [article_name, 'Reassessed', bs[1].text, bs[2].text,
-                                                              bs[3].text, bs[4].text, '']
-                                                elif sentence == 'removed. Importance rating was':
-                                                    scores = [article_name, 'Removed', '', '', bs[1].text, '', '']
-                                                elif sentence == 'removed. Quality rating was':
-                                                    scores = [article_name, 'Removed', bs[1].text, '', '', '', '']
-                                                elif sentence == 'removed. Quality rating was Importance rating was':
-                                                    scores = [article_name, 'Removed', bs[1].text, '', bs[2].text, '',
-                                                              '']
-                                                elif sentence == 'renamed to .':
-                                                    scores = [article_name, 'Renamed', '', '', '', '', bs[1].text]
-
-                                                article = scores[0]
-                                                action = scores[1]
-                                                old_qual = scores[2]
-                                                new_qual = scores[3]
-                                                old_imp = scores[4]
-                                                new_imp = scores[5]
-                                                new_article_name = scores[6]
-
-                                                for a in tag_li("a"):
-                                                    if a.text == "t":
-                                                        old_talk_link = a['href'].replace('https://en.wikipedia.org',
-                                                                                          '')
-                                                    elif a.text == "rev":
-                                                        old_article_link = a['href'].replace('https://en.wikipedia.org',
-                                                                                             '')
-                                                    else:
-                                                        old_talk_link = a['href'].replace('https://en.wikipedia.org',
-                                                                                          '')
-                                                        old_article_link = a['href'].replace('https://en.wikipedia.org',
-                                                                                             '')
-
-                                                article_assessment = [project, requiredDate, action, article, old_qual,
-                                                                      new_qual, old_imp,
-                                                                      new_imp, new_article_name, old_article_link,
-                                                                      old_talk_link]
-                                                project_assessment.append(article_assessment)
-                                    tag = tag.next_sibling
-                                project_assessment = sorted(project_assessment, key=lambda x: parse(x[1]))
-                                df = pd.DataFrame(project_assessment)
-                                with open(outpath, 'a') as f:
-                                    df.to_csv(f, sep='\t', encoding='utf-8', index=False, header=False)
-                                f.close()
-
-                        project_assessment = pd.read_csv(outpath, sep='\t')
-                        if project_assessment:
-                            project_assessment = project_assessment.drop_duplicates()
-                        project_assessment.to_csv(outpath, sep='\t', encoding='utf-8', index=False, header=False)
-                        project_assessment = project_assessment.sort('Date')
-
-                        history_outpath = os.path.join(filesystem.HistoryFileSystem, project + '.tsv')
-                        with open(history_outpath, 'a') as outfile:
-                            if project_assessment:
-                                outfile.write(project_assessment[-1][1] + '\n')
-                        outfile.close()
-
-                        print "The project parsed is: {0}, The cumulative total is: {1}".format(project, str(count))
-
-                    crawlout.write(last_crawled + '\n')
-
-                crawlout.close()
-            except:
-                traceback.print_exc(file=logPath)
+parse("Computing")
