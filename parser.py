@@ -11,6 +11,7 @@ from dateutil.parser import parse
 import logging
 import os
 import re
+import shutil
 import sys
 import traceback
 import urllib
@@ -23,7 +24,14 @@ import pandas as pd
 project_tsv = "data/projects-2016-10-12.utf-16-le.tsv"
 project_log = "output/projects/%s/parse.log"
 cache_dir = "output/projects/%s/cache"
-assessment_dir = "output/assessments"
+to_parse = "output/to_parse/%s"
+assessment_file = "output/assessments/%s.utf8.tsv"
+
+# Main log
+logger = logging.getLogger('parser_main')
+handler = logging.FileHandler('output/parser_main.log')
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 # Fields
 columns = [
@@ -167,12 +175,13 @@ def parse(project_name):
     # Go newest to oldest for correct order in multi-page entries
     pages = sorted(os.listdir(cache_dir % clean_name), reverse=True)
     for i, page in enumerate(pages):
+        logger.info("Beginning page: %s" % page)
         if i > 0 and i % 1000 == 0:
-            print "%d: %2.2f" % (i, (float(i) / float(len(pages))))
+            print "%d: %2.2f\%" % (100*i, (float(i) / float(len(pages))))
         # Load html into beautifulsoup
         with open(os.path.join(cache_dir % clean_name, page)) as f:
             page_tree = BeautifulSoup(f.read(), 'html.parser')
-            
+        
         # Check whether this page is a continuation
         p = page_tree.find(text=contd_text)
         # If not, find the first date header
@@ -186,49 +195,61 @@ def parse(project_name):
                 try:
                     current_tag = date_tags[0]
                 except IndexError:
-                    logger.exception("No headers match pattern: %s" % page)
+                    logger.info("No headers match pattern: %s" % page)
                     continue
             except Exception as TagNotFoundException:
-                logger.exception("No headers found: %s" % page)
+                logger.info("No headers found: %s" % page)
                 continue
             try:
                 date_text = current_tag.span.get_text()
                 current_date = parse_date(date_text)
             except ValueError:
                 logger.error("Unable to parse date: %s" % str(current_tag))
-                return
+                raise
+        else:
+            logger.info("Continuing from previous page: %s" % page)
+            current_tag = page_tree.find(id="mw-content-text").find('ul')
 
+        entry_count = 0
         while True:            
             # Move to next tag
             try:
                 current_tag = current_tag.next_sibling
+                current_tag.name
             except AttributeError:
+                if entry_count == 0:
+                    logger.error("Found no entries in: %s" % page)
+                    raise ValueError
+                logger.info("Parsed %d counts in %s" % (entry_count, page))
                 break
             
-            try:
-                if current_tag.name == "h3":
-                    date_text = current_tag.span.get_text()
-                    current_date = parse_date(date_text)
-                elif current_tag.name == "ul":
-                    for item in current_tag.find_all('li'):
-                        try:
-                            entry = get_entry(project_name, current_date, item, logger)
-                        except ValueError:
-                            logger.error("Error parsing: %s" % item.get_text())
-                            raise
-                            continue
-                        entries[entry[1]] = entry
-            except AttributeError:
-                continue
+            if current_tag.name == "h3":
+                date_text = current_tag.span.get_text()
+                current_date = parse_date(date_text)
+            elif current_tag.name == "ul":
+                for item in current_tag.find_all('li'):
+                    try:
+                        entry = get_entry(project_name, current_date, item, logger)
+                    except ValueError:
+                        logger.error("Error parsing: %s" % item.get_text())
+                        raise
+                    ts = entry[1]
+                    entries[ts] = entries.get(ts, [])
+                    entries[ts].append(entry)
+                    entry_count += 1
     logger.info("Parse complete")
     logger.info("Sortintg results")
     sorted_keys = sorted(entries.keys())
     logger.info("Writing results")
-    clean_name = urllib.quote(project_name.replace(" ", "_").encode('utf-8'))
-    with open(os.path.join(assessment_dir, "%s.csv" % clean_name)) as f:
+    quoted_name = urllib.quote(project_name.replace(" ", "_").encode('utf-8'))
+    with open(os.path.join(assessment_file % quoted_name), "wb") as f:
         f.write((u",".join(columns) + u"\n").encode('utf-8'))
         for k in sorted_keys:
-            f.write((u",".join(entries[k]) + u"\n").encode('utf-8'))
+            for entry in entries[k]:
+                row = u"\t".join([unicode(x) for x in entry]) + u"\n"
+                f.write(row.encode('utf-8'))
+    logger.info("Marking cmoplete")
+    os.remove(to_parse % clean_name)
     logger.info("Project %s complete" % project_name)
 
 # Load project names, ignore duplicates
@@ -245,4 +266,7 @@ with open(project_tsv, "rb") as f:
             unique_names.add(unique)
             project_names.append(name)
 
-parse("Computing")
+parse("ACC")
+#for project_name in project_names:
+#    logger.info("Starting %s" % project_names)
+#    parse(project_name)
