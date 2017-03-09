@@ -101,8 +101,16 @@ def get_entry(project_name, date, item, logger):
         m = re.search(reassessed_imp_re, text)
         if m:
             old_imp, new_imp = m.groups()
-        rev = item.find('a', text="rev")
-        article_old_link = rev.get('href').split("?")[1]
+        try:
+            rev = item.find('a', text="rev")
+        except AttributeError:
+            logger.error("  Couldn't parse: %s" % item.get_text())
+            raise AssertionError
+        try:
+            article_old_link = rev.get('href').split("?")[1]
+        except AttributeError:
+            logger.error("  Couldn't parse: %s" % item.get_text())
+            raise AssertionError
         # Get old article and talk link
         t = item.find('a', text="t")
         talk_old_link = t.get('href').split("?")[1]
@@ -179,6 +187,13 @@ def parse(project_name):
     logger.setLevel(logging.DEBUG)
     logger.info("Beggining parse")
     
+    # Make sure project hasn't already been crawled
+    try:
+        os.stat(to_parse % clean_name)
+    except OSError:
+        logger.info("Already crawled, skipping")
+        return
+
     entries = {}
     
     # Loop through cached history pages
@@ -254,6 +269,8 @@ def parse(project_name):
                     except ValueError:
                         logger.error("Error parsing: %s" % item.get_text())
                         raise
+                    except AssertionError:
+                        raise
                     k = (entry[1], entry[3], entry[2])
                     try:
                         prev = entries[k]
@@ -302,7 +319,10 @@ for project_name in project_names:
     project_cache_dir = cache_dir % clean_name
     subprocess.call(["tar", "-xzf", project_cache_tar])
     logger.info("  Beginning parse")
-    parse(project_name)
+    try:
+        parse(project_name)
+    except:
+        logger.error(str(sys.exc_info()))
     logger.info("  Cleaning up")
     shutil.rmtree(project_cache_dir)
 
