@@ -12,6 +12,7 @@ import logging
 import os
 import re
 import shutil
+import subprocess
 import sys
 import traceback
 import urllib
@@ -24,6 +25,7 @@ import pandas as pd
 project_tsv = "data/projects-2016-10-12.utf-16-le.tsv"
 project_log = "output/projects/%s/parse.log"
 cache_dir = "output/projects/%s/cache"
+cache_tar = "output/projects_crawled/%s-cache.tgz"
 to_parse = "output/to_parse/%s"
 assessment_file = "output/assessments/%s.utf8.tsv"
 
@@ -47,6 +49,9 @@ contd_text = "This log entry was truncated because it was too long. This entry i
 date_pattern = re.compile(
     "(January|February|March|April|May|June|July|August|September|October|November|December)"
     "\_\d{1,2}\.2C_\d{4}")
+cache_re = re.compile(
+    "oldid=(\d+)\.html"
+)
 reassessed_simple_re = re.compile(
     "(.+) reassessed from (.+) \((.+)\) to (.+) \((.+)\)"
 )
@@ -95,7 +100,12 @@ def get_entry(project_name, date, item, logger):
             old_qual, new_qual = m.groups()
         m = re.search(reassessed_imp_re, text)
         if m:
-            old_imp, new_imp = m.groups()            
+            old_imp, new_imp = m.groups()
+        rev = item.find('a', text="rev")
+        article_old_link = rev.get('href').split("?")[1]
+        # Get old article and talk link
+        t = item.find('a', text="t")
+        talk_old_link = t.get('href').split("?")[1]
         return [
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
@@ -173,19 +183,23 @@ def parse(project_name):
     
     # Loop through cached history pages
     # Go newest to oldest for correct order in multi-page entries
+    pages = os.listdir(cache_dir % clean_name)    
     pages = sorted(os.listdir(cache_dir % clean_name), reverse=True)
-    for i, page in enumerate(pages):
+    page_ids = [int(re.match(cache_re, page).groups()[0]) for page in pages]
+    page_ids = sorted(page_ids, reverse=True)
+    for i, page in enumerate(page_ids):
         logger.info("Beginning page: %s" % page)
         if i > 0 and i % 1000 == 0:
-            print "%d: %2.2f\%" % (100*i, (float(i) / float(len(pages))))
+            print "%d: %2.2f%%" % (i, (float(100*i) / float(len(pages))))
         # Load html into beautifulsoup
-        with open(os.path.join(cache_dir % clean_name, page)) as f:
+        with open(os.path.join(cache_dir % clean_name, "oldid=%d.html" % page)) as f:
             page_tree = BeautifulSoup(f.read(), 'html.parser')
         
         # Check whether this page is a continuation
         p = page_tree.find(text=contd_text)
         # If not, find the first date header
         if p is None:
+            contd = False
             try:
                 header_tags = page_tree.find_all("h3")
                 date_tags = [x for x in header_tags
@@ -207,21 +221,28 @@ def parse(project_name):
                 logger.error("Unable to parse date: %s" % str(current_tag))
                 raise
         else:
-            logger.info("Continuing from previous page: %s" % page)
+            contd = True
+            logger.info("  Continuing date: %d" % current_date)
             current_tag = page_tree.find(id="mw-content-text").find('ul')
 
         entry_count = 0
-        while True:            
+        skip_count = 0
+        while True:
             # Move to next tag
-            try:
-                current_tag = current_tag.next_sibling
-                current_tag.name
-            except AttributeError:
-                if entry_count == 0:
-                    logger.error("Found no entries in: %s" % page)
-                    raise ValueError
-                logger.info("Parsed %d counts in %s" % (entry_count, page))
-                break
+            # If we're continuing from the last page, we're already on the right
+            # tag so we don't go to the next one.
+            if contd:
+                contd = False
+            else:
+                try:
+                    current_tag = current_tag.next_sibling
+                    current_tag.name
+                except AttributeError:
+                    if entry_count == 0 and skip_count == 0:
+                        logger.error("Found no entries in: %s" % page)
+                        raise ValueError
+                    logger.info("  Parsed(skipped) %d(%d) counts in %s" % (entry_count, skip_count, page))
+                    break
             
             if current_tag.name == "h3":
                 date_text = current_tag.span.get_text()
@@ -233,10 +254,17 @@ def parse(project_name):
                     except ValueError:
                         logger.error("Error parsing: %s" % item.get_text())
                         raise
-                    ts = entry[1]
-                    entries[ts] = entries.get(ts, [])
-                    entries[ts].append(entry)
-                    entry_count += 1
+                    k = (entry[1], entry[3], entry[2])
+                    try:
+                        prev = entries[k]
+                        if prev != entry:
+                            logger.error("  Contradictory entries:")
+                            logger.error("    Keeping: " + str(prev))
+                            logger.error("    Discarding: " + str(entry))
+                        skip_count += 1
+                    except KeyError:
+                        entries[k] = entry
+                        entry_count += 1
     logger.info("Parse complete")
     logger.info("Sortintg results")
     sorted_keys = sorted(entries.keys())
@@ -245,9 +273,9 @@ def parse(project_name):
     with open(os.path.join(assessment_file % quoted_name), "wb") as f:
         f.write((u",".join(columns) + u"\n").encode('utf-8'))
         for k in sorted_keys:
-            for entry in entries[k]:
-                row = u"\t".join([unicode(x) for x in entry]) + u"\n"
-                f.write(row.encode('utf-8'))
+            entry = entries[k]
+            row = u"\t".join([unicode(x) for x in entry]) + u"\n"
+            f.write(row.encode('utf-8'))
     logger.info("Marking cmoplete")
     os.remove(to_parse % clean_name)
     logger.info("Project %s complete" % project_name)
@@ -263,10 +291,18 @@ with open(project_tsv, "rb") as f:
             continue
         name, unique = line.split(u"\t")
         if unique not in unique_names:
-            unique_names.add(unique)
+            unique_names.add(unique) 
             project_names.append(name)
 
-parse("ACC")
-#for project_name in project_names:
-#    logger.info("Starting %s" % project_names)
-#    parse(project_name)
+for project_name in project_names:
+    logger.info("Beginning %s" % project_name)
+    logger.info("  Decompressing cache")
+    clean_name = clean_name = project_name.replace("/", "_")
+    project_cache_tar = cache_tar % clean_name
+    project_cache_dir = cache_dir % clean_name
+    subprocess.call(["tar", "-xzf", project_cache_tar])
+    logger.info("  Beginning parse")
+    parse(project_name)
+    logger.info("  Cleaning up")
+    shutil.rmtree(project_cache_dir)
+
