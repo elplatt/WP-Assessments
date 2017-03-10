@@ -191,8 +191,8 @@ def parse(project_name):
     try:
         os.stat(to_parse % clean_name)
     except OSError:
-        logger.info("Already crawled, skipping")
-        return
+        logger.info("Already parsed, skipping")
+        return 1
 
     entries = {}
     
@@ -293,7 +293,7 @@ def parse(project_name):
             entry = entries[k]
             row = u"\t".join([unicode(x) for x in entry]) + u"\n"
             f.write(row.encode('utf-8'))
-    logger.info("Marking cmoplete")
+    logger.info("Marking complete")
     os.remove(to_parse % clean_name)
     logger.info("Project %s complete" % project_name)
 
@@ -320,9 +320,15 @@ for project_name in project_names:
     subprocess.call(["tar", "-xzf", project_cache_tar])
     logger.info("  Beginning parse")
     try:
-        parse(project_name)
+        status = parse(project_name)
+        if status == 1:
+            logger.info("  Already parsed")
     except:
         logger.error(str(sys.exc_info()))
     logger.info("  Cleaning up")
-    shutil.rmtree(project_cache_dir)
+    try:
+       shutil.rmtree(project_cache_dir)
+    except:
+        # Will error if we were unable to successfully decompress
+        pass
 
