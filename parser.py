@@ -172,9 +172,17 @@ def get_entry(project_name, date, item, logger):
 
 def parse_date(date_string):
     '''Convert date_string (assumed UTC) to UTC timestamp.'''
-    fmt = "%B %d, %Y"
+    fmt1 = "%B %d, %Y"
+    fmt2 = "%Y-%m-%d"    
     try:
-        timestamp = calendar.timegm(datetime.strptime(date_string, fmt).timetuple())
+        try:
+            dt = datetime.strptime(date_string, fmt1)
+        except ValueError:
+            dt = datetime.strptime(date_string, fmt2)
+    except ValueError:
+        raise ValueError
+    try:
+        timestamp = calendar.timegm(dt.timetuple())
     except TypeError:
         raise ValueError
     return timestamp
@@ -269,7 +277,11 @@ def parse(project_name):
             
             if current_tag.name == "h3":
                 date_text = current_tag.span.get_text()
-                current_date = parse_date(date_text)
+                try:
+                    current_date = parse_date(date_text)
+                except ValueError:
+                    logger.error("Unable to parse date: %s" % str(current_tag))
+                    raise
             elif current_tag.name == "ul":
                 for item in current_tag.find_all('li'):
                     try:
