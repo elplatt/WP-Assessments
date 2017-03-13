@@ -254,8 +254,11 @@ def parse(project_name):
                     current_tag.name
                 except AttributeError:
                     if entry_count == 0 and skip_count == 0:
-                        logger.error("Found no entries in: %s" % page)
-                        raise ValueError
+                        huge = page_tree.find(text="The log for today is too huge to upload to the wiki.")
+                        if huge is None:
+                            logger.error("Found no entries in: %s" % page)
+                            raise ValueError
+                        logger.warning("Log too large to upload: %s" % page)
                     logger.info("  Parsed(skipped) %d(%d) counts in %s" % (entry_count, skip_count, page))
                     break
             
