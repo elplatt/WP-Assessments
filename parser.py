@@ -209,6 +209,11 @@ def parse(project_name):
         # Load html into beautifulsoup
         with open(os.path.join(cache_dir % clean_name, "oldid=%d.html" % page)) as f:
             page_tree = BeautifulSoup(f.read(), 'html.parser')
+        try:
+            # Prevent running out of filehandlers if python procrastinates
+            f.close()
+        except:
+            pass
         
         # Check whether this page is a continuation
         p = page_tree.find(text=contd_text)
@@ -296,6 +301,11 @@ def parse(project_name):
             entry = entries[k]
             row = u"\t".join([unicode(x) for x in entry]) + u"\n"
             f.write(row.encode('utf-8'))
+    try:
+        # Prevent running out of filehandlers if python procrastinates
+        f.close()
+    except:
+        pass
     logger.info("Marking complete")
     os.remove(to_parse % clean_name)
     logger.info("Project %s complete" % project_name)
@@ -313,8 +323,20 @@ with open(project_tsv, "rb") as f:
         if unique not in unique_names:
             unique_names.add(unique) 
             project_names.append(name)
+try:
+    # Prevent running out of filehandlers if python procrastinates
+    f.close()
+except:
+    pass
 
-for project_name in project_names:
+for project_name in sorted(project_names):
+    # If the first arg is a project name, skip to that arg
+    try:
+        if sys.argv[1] > project_name:
+            logger.info("Skipping from arg: %s" % project_name)
+            continue
+    except IndexError:
+        pass
     logger.info("Beginning %s" % project_name)
     logger.info("  Decompressing cache")
     clean_name = clean_name = project_name.replace("/", "_")
@@ -326,6 +348,8 @@ for project_name in project_names:
         status = parse(project_name)
         if status == 1:
             logger.info("  Already parsed")
+        else:
+            logger.info("  Parsed successfully")
     except:
         logger.error(str(sys.exc_info()))
     logger.info("  Cleaning up")
