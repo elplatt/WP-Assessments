@@ -19,7 +19,6 @@ import urllib
 
 from bs4 import BeautifulSoup
 from bs4 import element
-import pandas as pd
 
 # Config
 project_tsv = "data/projects-2016-10-12.utf-16-le.tsv"
@@ -52,6 +51,15 @@ date_pattern = re.compile(
 cache_re = re.compile(
     "oldid=(\d+)\.html"
 )
+assessed_re = re.compile(
+    "(.+) \(.+\) assessed."
+)
+assessed_qual_re = re.compile(
+    "Quality assessed as (.+?) \(.+?\)\."
+)
+assessed_imp_re = re.compile(
+    "Importance assessed as (.+?) \(.+?\)\."
+)
 reassessed_simple_re = re.compile(
     "(.+) reassessed from (.+) \((.+)\) to (.+) \((.+)\)"
 )
@@ -64,11 +72,20 @@ reassessed_qual_re = re.compile(
 reassessed_imp_re = re.compile(
     "Importance rating changed from (\S+) to (\S+)"
 )
+reassessed_quote_rev_re = re.compile(
+    "(.+) rev"
+)
+reassessed_quote_t_re = re.compile(
+    "(.+) t"
+)
 added_re = re.compile(
     "(.+) \(talk\) (.+) \((.+)\) added"
 )
-removed_re = re.compile(
+removed_simple_re = re.compile(
     "(.+) \(talk\) (.+) \((.+)\) removed"
+)
+removed_re = re.compile(
+    "(.+) \(talk\) removed\."
 )
 renamed_simple_re = re.compile(
     "(.+) renamed to (.+)\."
@@ -77,7 +94,10 @@ renamed_talk_re = re.compile(
     "(.+) \(talk\) (.+) \((.+)\) renamed to (.+)"
 )
 renamed_re = re.compile(
-    "(.+) \(.+?|talk\) (.+) \((.+)\) renamed to (.+)"
+    "(.+) \(.+?\) (.+) \((.+)\) renamed to (.+)"
+)
+renamed_assessment_re = re.compile(
+    "(.+) \((.+)\)"
 )
 def get_entry(project_name, date, item, logger):
     text = item.get_text()
@@ -93,7 +113,6 @@ def get_entry(project_name, date, item, logger):
     
     m = re.match(reassessed_re, text)
     if m:
-        action = "Reassessed"
         article_name, = m.groups()
         m = re.search(reassessed_qual_re, text)
         if m:
@@ -101,19 +120,35 @@ def get_entry(project_name, date, item, logger):
         m = re.search(reassessed_imp_re, text)
         if m:
             old_imp, new_imp = m.groups()
+        # Get old revision link
         try:
             rev = item.find('a', text="rev")
-        except AttributeError:
-            logger.error("  Couldn't parse: %s" % item.get_text())
-            raise AssertionError
-        try:
             article_old_link = rev.get('href').split("?")[1]
         except AttributeError:
-            logger.error("  Couldn't parse: %s" % item.get_text())
-            raise AssertionError
-        # Get old article and talk link
-        t = item.find('a', text="t")
-        talk_old_link = t.get('href').split("?")[1]
+            # Couldn't parse, check whether it's a quoting problem
+            try:
+                rev = item.find('a', text=reassessed_quote_rev_re)
+                text_part = re.match(reassessed_quote_rev_re, rev.get_text()).groups()[0]
+                href_part = rev.get('href').split("?")[1]
+                article_old_link = href_part + text_part.replace('"', "%22")
+            except AttributeError:
+                logger.error("  Couldn't parse: %s" % item.get_text())
+                raise AssertionError
+        # Get old talk link
+        try:
+            t = item.find('a', text="t")
+            talk_old_link = t.get('href').split("?")[1]
+        except AttributeError:
+            # Couldn't parse, check whether it's a quoting problem
+            try:
+                t = item.find('a', text=reassessed_quote_t_re)
+                text_part = re.match(reassessed_quote_t_re, t.get_text()).groups()[0]
+                href_part = t.get('href').split("?")[1]
+                talk_old_link = href_part + text_part.replace('"', "%22")
+            except AttributeError:
+                logger.error("  Couldn't parse: %s" % item.get_text())
+                raise AssertionError
+        # We made it, somehow
         return [
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
@@ -122,7 +157,33 @@ def get_entry(project_name, date, item, logger):
     if m:
         action = "Reassessed"
         article_name, old_qual, old_imp, new_qual, new_imp = m.groups()
-        
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
+    m = re.match(assessed_re, text)
+    if m:
+        action = "Assessed"
+        links = item.find_all('a')
+        article_name = links[0].get_text()
+        qual_m = re.search(assessed_qual_re, text)
+        if qual_m:
+            new_qual, = qual_m.groups()
+        imp_m = re.search(assessed_imp_re, text)
+        if imp_m:
+            new_imp, = imp_m.groups()
+        if qual_m or imp_m:
+            if len(links) == 4 or len(links) == 6:
+                # Not missing a talk link
+                article_old_link = links[2].get('href').split("?")[1]
+                talk_old_link = links[3].get('href').split("?")[1]
+            elif len(links) == 3 or len(links) == 5:
+                # Missing a talk link
+                article_old_link = links[1].get('href').split("?")[1]
+                talk_old_link = links[2].get('href').split("?")[1]
+            else:
+                logger.error("Unrecognized number of links: %s" % text)
+                raise ValueError
         return [
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
@@ -130,15 +191,8 @@ def get_entry(project_name, date, item, logger):
     m = re.match(added_re, text)
     if m:
         action = "Assessed"
+        logger.info("assessed: %s" % text)
         article_name, new_qual, new_imp = m.groups()
-        return [
-            project_name, date, action, article_name, old_qual, new_qual,
-            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
-    
-    m = re.match(removed_re, text)
-    if m:
-        action = "Removed"
-        article_name, old_class, old_imp = m.groups()
         return [
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
@@ -153,7 +207,18 @@ def get_entry(project_name, date, item, logger):
         
     m = re.match(renamed_re, text)
     if m:
+        links = item.find_all('a')
+        # Get article names and talk link
+        # Can't trust regex because of nested parentheses
+        # Instead trim links from ends of string
         action = "Renamed"
+        article_name = links[0].get_text()
+        talk_text = links[1].get_text()
+        article_new_name = links[2].get_text()
+        front = len(article_name) + len(talk_text) + len(" () ")
+        back = len(article_new_name) + len(" ")
+        assessment_part = text[front:-back]
+        old_class, old_imp = re.match(renamed_assessment_re, assessment_part).groups()
         article_name, old_class, old_imp, article_new_name = m.groups()
         return [
             project_name, date, action, article_name, old_qual, new_qual,
@@ -163,6 +228,22 @@ def get_entry(project_name, date, item, logger):
     if m:
         action = "Renamed"
         article_name, article_new_name = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
+    m = re.match(removed_re, text)
+    if m:
+        action = "Removed"
+        article_name, = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
+    m = re.match(removed_simple_re, text)
+    if m:
+        action = "Removed"
+        article_name, old_class, old_imp = m.groups()
         return [
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
@@ -211,8 +292,7 @@ def parse(project_name):
     page_ids = [int(re.match(cache_re, page).groups()[0]) for page in pages]
     page_ids = sorted(page_ids, reverse=True)
     for i, page in enumerate(page_ids):
-        logger.info("Beginning page: %s" % page)
-        if i > 0 and i % 1000 == 0:
+        if i > 0 and i % 100 == 0:
             print "%d: %2.2f%%" % (i, (float(100*i) / float(len(pages))))
         # Load html into beautifulsoup
         with open(os.path.join(cache_dir % clean_name, "oldid=%d.html" % page)) as f:
@@ -308,7 +388,7 @@ def parse(project_name):
     logger.info("Writing results")
     quoted_name = urllib.quote(project_name.replace(" ", "_").encode('utf-8'))
     with open(os.path.join(assessment_file % quoted_name), "wb") as f:
-        f.write((u",".join(columns) + u"\n").encode('utf-8'))
+        f.write((u"\t".join(columns) + u"\n").encode('utf-8'))
         for k in sorted_keys:
             entry = entries[k]
             row = u"\t".join([unicode(x) for x in entry]) + u"\n"
