@@ -191,7 +191,6 @@ def get_entry(project_name, date, item, logger):
     m = re.match(added_re, text)
     if m:
         action = "Assessed"
-        logger.info("assessed: %s" % text)
         article_name, new_qual, new_imp = m.groups()
         return [
             project_name, date, action, article_name, old_qual, new_qual,
