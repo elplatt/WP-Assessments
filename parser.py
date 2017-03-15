@@ -30,7 +30,7 @@ assessment_file = "output/assessments/%s.utf8.tsv"
 
 # Main log
 logger = logging.getLogger('parser_main')
-handler = logging.FileHandler('output/parser_main.log')
+handler = logging.FileHandler('output/parser_%s.log' % datetime.now().strftime("%m%dT%H%M"))
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
