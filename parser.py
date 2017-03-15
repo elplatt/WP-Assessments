@@ -78,6 +78,12 @@ reassessed_quote_rev_re = re.compile(
 reassessed_quote_t_re = re.compile(
     "(.+) t"
 )
+reassessed_moved_re = re.compile(
+    "(.+) moved from (.+) \((.+)\) to (.+) \((.+)\)"
+)
+added_simple_re = re.compile(
+    "(.+) \(talk\) added"
+)
 added_re = re.compile(
     "(.+) \(talk\) (.+) \((.+)\) added"
 )
@@ -85,13 +91,16 @@ removed_simple_re = re.compile(
     "(.+) \(talk\) (.+) \((.+)\) removed"
 )
 removed_re = re.compile(
-    "(.+) \(talk\) removed\."
+    "(.+) \(talk\) removed"
 )
 renamed_simple_re = re.compile(
     "(.+) renamed to (.+)\."
 )
 renamed_talk_re = re.compile(
     "(.+) \(talk\) (.+) \((.+)\) renamed to (.+)"
+)
+renamed_simple_talk_re = re.compile(
+    "(.+) \(talk\) renamed to (.+) \(talk\)"
 )
 renamed_re = re.compile(
     "(.+) \(.+?\) (.+) \((.+)\) renamed to (.+)"
@@ -188,14 +197,6 @@ def get_entry(project_name, date, item, logger):
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
     
-    m = re.match(added_re, text)
-    if m:
-        action = "Assessed"
-        article_name, new_qual, new_imp = m.groups()
-        return [
-            project_name, date, action, article_name, old_qual, new_qual,
-            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
-    
     m = re.match(renamed_talk_re, text)
     if m:
         action = "Renamed"
@@ -212,17 +213,33 @@ def get_entry(project_name, date, item, logger):
         # Instead trim links from ends of string
         action = "Renamed"
         article_name = links[0].get_text()
-        talk_text = links[1].get_text()
-        article_new_name = links[2].get_text()
-        front = len(article_name) + len(talk_text) + len(" () ")
-        back = len(article_new_name) + len(" ")
-        assessment_part = text[front:-back]
-        old_class, old_imp = re.match(renamed_assessment_re, assessment_part).groups()
-        article_name, old_class, old_imp, article_new_name = m.groups()
+        if len(links) == 2:
+            article_new_name = links[1].get_text()
+        elif len(links) > 2:
+            talk_text = links[1].get_text()
+            article_new_name = links[2].get_text()
+            front = len(article_name) + len(talk_text) + len(" () ")
+            back = len(article_new_name) + len(" ")
+            assessment_part = text[front:-back]
+            old_class, old_imp = re.match(renamed_assessment_re, assessment_part).groups()
+        else:
+            logger.error("renamed_re unrecognized link count")
+            raise ValueError
         return [
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
-        
+    
+    m = re.match(renamed_simple_talk_re, text)
+    if m:
+        links = item.find_all('a')
+        action = "Renamed"
+        article_name = links[0].get_text()
+        talk_text = links[1].get_text()
+        article_new_name = links[2].get_text()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]    
+    
     m = re.match(renamed_simple_re, text)
     if m:
         action = "Renamed"
@@ -247,6 +264,30 @@ def get_entry(project_name, date, item, logger):
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
     
+    m = re.match(added_re, text)
+    if m:
+        action = "Assessed"
+        article_name, new_qual, new_imp = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
+    m = re.match(added_simple_re, text)
+    if m:
+        action = "Assessed"
+        article_name, = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
+    m = re.match(reassessed_moved_re, text)
+    if m:
+        action = "Reassessed"
+        article_name, old_qual, old_imp, new_qual, new_imp = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+
     logger.error("Unrecognized format: %s" % text)
     raise ValueError
 
@@ -349,8 +390,8 @@ def parse(project_name):
                         huge = page_tree.find(text="The log for today is too huge to upload to the wiki.")
                         if huge is None:
                             logger.error("Found no entries in: %s" % page)
-                            raise ValueError
-                        logger.warning("Log too large to upload: %s" % page)
+                        else:
+                            logger.warning("Log too large to upload: %s" % page)
                     logger.info("  Parsed(skipped) %d(%d) counts in %s" % (entry_count, skip_count, page))
                     break
             
@@ -419,6 +460,9 @@ try:
     f.close()
 except:
     pass
+
+#parse("test")
+#sys.exit()
 
 for project_name in sorted(project_names):
     # If the first arg is a project name, skip to that arg
