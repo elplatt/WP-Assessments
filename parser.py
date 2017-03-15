@@ -88,10 +88,10 @@ added_re = re.compile(
     "(.+) \(talk\) (.+) \((.+)\) added"
 )
 removed_simple_re = re.compile(
-    "(.+) \(talk\) (.+) \((.+)\) removed"
+    "(.+) \([^()]*talk[^()]*\) (.+) \((.+)\) removed"
 )
 removed_re = re.compile(
-    "(.+) \(talk\) removed"
+    "(.+) \([^()]*talk[^()]*\)\s*removed"
 )
 renamed_simple_re = re.compile(
     "(.+) renamed to (.+)\."
@@ -107,6 +107,9 @@ renamed_re = re.compile(
 )
 renamed_assessment_re = re.compile(
     "(.+) \((.+)\)"
+)
+testing_re = re.compile(
+    "Temp bot"
 )
 def get_entry(project_name, date, item, logger):
     text = item.get_text()
@@ -288,6 +291,11 @@ def get_entry(project_name, date, item, logger):
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
 
+    m = re.match(testing_re, text)
+    if m:
+        # We've found testing code, ignore it
+        raise StopIteration
+
     logger.error("Unrecognized format: %s" % text)
     raise ValueError
 
@@ -411,6 +419,9 @@ def parse(project_name):
                         raise
                     except AssertionError:
                         raise
+                    except StopIteration:
+                        # Probably testing code to skip
+                        continue
                     k = (entry[1], entry[3], entry[2])
                     try:
                         prev = entries[k]
@@ -460,9 +471,6 @@ try:
     f.close()
 except:
     pass
-
-#parse("test")
-#sys.exit()
 
 for project_name in sorted(project_names):
     # If the first arg is a project name, skip to that arg
