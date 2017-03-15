@@ -392,7 +392,7 @@ def parse(project_name):
                             logger.error("Found no entries in: %s" % page)
                         else:
                             logger.warning("Log too large to upload: %s" % page)
-                    logger.info("  Parsed(skipped) %d(%d) counts in %s" % (entry_count, skip_count, page))
+                    #logger.info("  Parsed(skipped) %d(%d) counts in %s" % (entry_count, skip_count, page))
                     break
             
             if current_tag.name == "h3":
