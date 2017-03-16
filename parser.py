@@ -125,6 +125,7 @@ def get_entry(project_name, date, item, logger):
     
     m = re.match(reassessed_re, text)
     if m:
+        action = "Reassessed"
         article_name, = m.groups()
         m = re.search(reassessed_qual_re, text)
         if m:
@@ -422,6 +423,10 @@ def parse(project_name):
                         # Crawl stopped in the middle of multi-page entry
                         # Just skip to the first full entry
                         break
+                    if entry[2] == 0:
+                        logger.error("  get_entry() returned without action")
+                        logger.error("    page_id: %d" % page)
+                        raise AssertionError
                     k = (entry[1], entry[3], entry[2])
                     try:
                         prev = entries[k]
