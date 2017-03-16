@@ -82,13 +82,13 @@ reassessed_moved_re = re.compile(
     "(.+) moved from (.+) \((.+)\) to (.+) \((.+)\)"
 )
 added_simple_re = re.compile(
-    "(.+) \(talk\) added"
+    "(.+) \([^()]*talk[^()]*\) added"
 )
 added_re = re.compile(
-    "(.+) \(talk\) (.+) \((.+)\) added"
+    "(.+) \([^()]*talk[^()]*\) (.+) \((.+)\) added"
 )
 removed_simple_re = re.compile(
-    "(.+) \([^()]*talk[^()]*\) (.+) \((.+)\) removed"
+    "(.+) \([^()]*talk[^()]*\) (.+) \((.+)\)\s*removed"
 )
 removed_re = re.compile(
     "(.+) \([^()]*talk[^()]*\)\s*removed"
@@ -97,7 +97,7 @@ renamed_simple_re = re.compile(
     "(.+) renamed to (.+)\."
 )
 renamed_talk_re = re.compile(
-    "(.+) \(talk\) (.+) \((.+)\) renamed to (.+)"
+    "(.+) \([^()]*talk[^()]*\) (.+) \((.+)\) renamed to (.+)"
 )
 renamed_simple_talk_re = re.compile(
     "(.+) \(talk\) renamed to (.+) \(talk\)"
@@ -184,18 +184,8 @@ def get_entry(project_name, date, item, logger):
         imp_m = re.search(assessed_imp_re, text)
         if imp_m:
             new_imp, = imp_m.groups()
-        if qual_m or imp_m:
-            if len(links) == 4 or len(links) == 6:
-                # Not missing a talk link
-                article_old_link = links[2].get('href').split("?")[1]
-                talk_old_link = links[3].get('href').split("?")[1]
-            elif len(links) == 3 or len(links) == 5:
-                # Missing a talk link
-                article_old_link = links[1].get('href').split("?")[1]
-                talk_old_link = links[2].get('href').split("?")[1]
-            else:
-                logger.error("Unrecognized number of links: %s" % text)
-                raise ValueError
+        # There will be data for revision and talk links
+        # but this part of the parser hasn't been implemented yet
         return [
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
@@ -251,22 +241,6 @@ def get_entry(project_name, date, item, logger):
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
     
-    m = re.match(removed_re, text)
-    if m:
-        action = "Removed"
-        article_name, = m.groups()
-        return [
-            project_name, date, action, article_name, old_qual, new_qual,
-            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
-    
-    m = re.match(removed_simple_re, text)
-    if m:
-        action = "Removed"
-        article_name, old_class, old_imp = m.groups()
-        return [
-            project_name, date, action, article_name, old_qual, new_qual,
-            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
-    
     m = re.match(added_re, text)
     if m:
         action = "Assessed"
@@ -279,6 +253,22 @@ def get_entry(project_name, date, item, logger):
     if m:
         action = "Assessed"
         article_name, = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
+    m = re.match(removed_re, text)
+    if m:
+        action = "Removed"
+        article_name, = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
+    m = re.match(removed_simple_re, text)
+    if m:
+        action = "Removed"
+        article_name, old_class, old_imp = m.groups()
         return [
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
@@ -378,7 +368,12 @@ def parse(project_name):
                 raise
         else:
             contd = True
-            logger.info("  Continuing date: %d" % current_date)
+            try:
+                logger.info("  Continuing date: %d" % current_date)
+            except UnboundLocalError:
+                # Crawl stopped in the middle of multi-page entry
+                # Just skip to the first full entry
+                continue
             current_tag = page_tree.find(id="mw-content-text").find('ul')
 
         entry_count = 0
@@ -415,13 +410,18 @@ def parse(project_name):
                     try:
                         entry = get_entry(project_name, current_date, item, logger)
                     except ValueError:
-                        logger.error("Error parsing: %s" % item.get_text())
+                        logger.error("  Error parsing: %s" % item.get_text())
+                        logger.error("    page_id: %d" % page)
                         raise
                     except AssertionError:
                         raise
                     except StopIteration:
                         # Probably testing code to skip
                         continue
+                    except UnboundLocalError:
+                        # Crawl stopped in the middle of multi-page entry
+                        # Just skip to the first full entry
+                        break
                     k = (entry[1], entry[3], entry[2])
                     try:
                         prev = entries[k]
@@ -472,10 +472,21 @@ try:
 except:
     pass
 
+# Only run testing project (should usually be commented out)
+parse("test")
+sys.exit()
+
+# Parse all projects
 for project_name in sorted(project_names):
     # If the first arg is a project name, skip to that arg
     try:
         if sys.argv[1] > project_name:
+            logger.info("Skipping from arg: %s" % project_name)
+            continue
+    except IndexError:
+        pass
+    try:
+        if sys.argv[2] <= project_name:
             logger.info("Skipping from arg: %s" % project_name)
             continue
     except IndexError:
