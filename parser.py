@@ -26,6 +26,7 @@ project_log = "output/projects/%s/parse.log"
 cache_dir = "output/projects/%s/cache"
 cache_tar = "output/projects_crawled/%s-cache.tgz"
 to_parse = "output/to_parse/%s"
+done_parse = "output/done_parse/%s"
 assessment_file = "output/assessments/%s.utf8.tsv"
 
 # Main log
@@ -317,10 +318,11 @@ def parse(project_name):
     
     # Make sure project hasn't already been crawled
     try:
-        os.stat(to_parse % clean_name)
-    except OSError:
+        os.stat(done_parse % clean_name)
         logger.info("Already parsed, skipping")
         return 1
+    except OSError:
+        pass
 
     entries = {}
     
@@ -449,13 +451,18 @@ def parse(project_name):
             entry = entries[k]
             row = u"\t".join([unicode(x) for x in entry]) + u"\n"
             f.write(row.encode('utf-8'))
+    # Prevent running out of filehandlers if python procrastinates
     try:
-        # Prevent running out of filehandlers if python procrastinates
         f.close()
     except:
         pass
     logger.info("Marking complete")
-    os.remove(to_parse % clean_name)
+    with open(done_parse % clean_name, "wb") as f:
+        f.write(project_name.encode('utf-8'))
+    try:
+        f.close()
+    except:
+        pass
     logger.info("Project %s complete" % project_name)
 
 # Load project names, ignore duplicates
