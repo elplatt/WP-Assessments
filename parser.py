@@ -473,8 +473,8 @@ except:
     pass
 
 # Only run testing project (should usually be commented out)
-parse("test")
-sys.exit()
+#parse("test")
+#sys.exit()
 
 # Parse all projects
 for project_name in sorted(project_names):
