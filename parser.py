@@ -103,7 +103,7 @@ renamed_talk_re = re.compile(
     "(.+) \([^()]*talk[^()]*\) (.+) \((.+)\) renamed to (.+)"
 )
 renamed_simple_talk_re = re.compile(
-    "(.+) \([^()]*talk[^()]*\) renamed to (.+) \([^()]*talk[^()]*\)"
+    "(.+) \([^()]*[tT]alk[^()]*(?:\([^()]*\)[^()]*)?\) renamed to (.+) \([^()]*[tT]alk[^()]*(?:\([^()]*\)[^()]*)?\)"
 )
 renamed_re = re.compile(
     "(.+) \(.+?\) (.+) \((.+)\) renamed to (.+)"
