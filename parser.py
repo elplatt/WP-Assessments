@@ -1,9 +1,5 @@
-# Project: Identifying shocks in Wikipedia Project
-# Author: Shailesh Vedula
-# Advisors: Dr.Daniel Romero, Dr. Ceren Budak
-# Affiliation: Industrial and Operations Engineering, University of Michigan, Ann Arbor
-# File Name: crawler
-# Date: 11/10/16
+# -*- coding: utf-8 -*-
+# Parse cached Wikipedia assesment logs, output utf-8 encoded TSV
 
 import calendar
 from datetime import datetime
@@ -64,6 +60,9 @@ assessed_imp_re = re.compile(
 reassessed_simple_re = re.compile(
     "(.+) reassessed from (.+) \((.+)\) to (.+) \((.+)\)"
 )
+reassessed_ga_re = re.compile(
+    "(.+) upgraded to good article status"
+)
 reassessed_re = re.compile(
     "(.+) \(talk\) reassessed."
 )
@@ -94,6 +93,9 @@ removed_simple_re = re.compile(
 removed_re = re.compile(
     "(.+) \([^()]*talk[^()]*\)\s*removed"
 )
+removed_paren_re = re.compile(
+    "(.+) \([^()]*\([^()]*\)[^()]*talk[^()]*\)\s*removed"
+)
 renamed_simple_re = re.compile(
     "(.+) renamed to (.+)\."
 )
@@ -111,6 +113,9 @@ renamed_assessment_re = re.compile(
 )
 renamed_moved_talk_re = re.compile(
     "(.+) ([^()]*talk[^()]*) moved to (.+) ([^()]*talk[^()]*)"
+)
+talk_re = re.compile(
+    "[^()]*talk[^()]*"
 )
 noaction_re = re.compile (
     "(.+) \([^()]*talk[^()]*\) (.+) \((.+)\)"
@@ -140,34 +145,39 @@ def get_entry(project_name, date, item, logger):
         m = re.search(reassessed_imp_re, text)
         if m:
             old_imp, new_imp = m.groups()
+            
         # Get old revision link
-        try:
-            rev = item.find('a', text="rev")
-            article_old_link = rev.get('href').split("?")[1]
-        except AttributeError:
-            # Couldn't parse, check whether it's a quoting problem
-            try:
-                rev = item.find('a', text=reassessed_quote_rev_re)
-                text_part = re.match(reassessed_quote_rev_re, rev.get_text()).groups()[0]
-                href_part = rev.get('href').split("?")[1]
-                article_old_link = href_part + text_part.replace('"', "%22")
-            except AttributeError:
-                logger.error("  Couldn't parse: %s" % item.get_text())
-                raise AssertionError
+        # Below code still has quoting errors
+        # Example from oldid=397973473
+        # "Gypsy" in Jazz (Teddy Wilson album) (talk) reassessed. Importance rating changed from Unknown-Class to Mid-Class ("Gypsy"%20in%20Jazz%20%28Teddy%20Wilson%20album%29&oldid=392798701 rev · "Gypsy"%20in%20Jazz%20%28Teddy%20Wilson%20album%29&oldid=397522420 t).
+        #try:
+        #    rev = item.find('a', text="rev")
+        #    article_old_link = rev.get('href').split("?")[1]
+        #except AttributeError:
+        #    # Couldn't parse, check whether it's a quoting problem
+        #    try:
+        #        rev = item.find('a', text=reassessed_quote_rev_re)
+        #        text_part = re.match(reassessed_quote_rev_re, rev.get_text()).groups()[0]
+        #        href_part = rev.get('href').split("?")[1]
+        #        article_old_link = href_part + text_part.replace('"', "%22")
+        #    except AttributeError:
+        #        logger.error("  Couldn't parse: %s" % item.get_text())
+        #        raise AssertionError
         # Get old talk link
-        try:
-            t = item.find('a', text="t")
-            talk_old_link = t.get('href').split("?")[1]
-        except AttributeError:
-            # Couldn't parse, check whether it's a quoting problem
-            try:
-                t = item.find('a', text=reassessed_quote_t_re)
-                text_part = re.match(reassessed_quote_t_re, t.get_text()).groups()[0]
-                href_part = t.get('href').split("?")[1]
-                talk_old_link = href_part + text_part.replace('"', "%22")
-            except AttributeError:
-                logger.error("  Couldn't parse: %s" % item.get_text())
-                raise AssertionError
+        #try:
+        #    t = item.find('a', text="t")
+        #    talk_old_link = t.get('href').split("?")[1]
+        #except AttributeError:
+        #    # Couldn't parse, check whether it's a quoting problem
+        #    try:
+        #        t = item.find('a', text=reassessed_quote_t_re)
+        #        text_part = re.match(reassessed_quote_t_re, t.get_text()).groups()[0]
+        #        href_part = t.get('href').split("?")[1]
+        #        talk_old_link = href_part + text_part.replace('"', "%22")
+        #    except AttributeError:
+        #        logger.error("  Couldn't parse: %s" % item.get_text())
+        #        raise AssertionError
+        
         # We made it, somehow
         return [
             project_name, date, action, article_name, old_qual, new_qual,
@@ -216,13 +226,24 @@ def get_entry(project_name, date, item, logger):
         article_name = links[0].get_text()
         if len(links) == 2:
             article_new_name = links[1].get_text()
+            if re.match(talk_re, article_new_name):
+                logger.error("Unable to find new name: %s" % text)
+                raise ValueError
         elif len(links) > 2:
-            talk_text = links[1].get_text()
             article_new_name = links[2].get_text()
-            front = len(article_name) + len(talk_text) + len(" () ")
-            back = len(article_new_name) + len(" ")
-            assessment_part = text[front:-back]
-            old_class, old_imp = re.match(renamed_assessment_re, assessment_part).groups()
+            if re.match(talk_re, article_new_name):
+                logger.error("Unable to find new name: %s" % text)
+                raise ValueError
+            # Was attempt to capture assessment
+            # Ignore for now since this is a rename
+            #front = len(article_name) + len(talk_text) + len(" () ")
+            #back = len(article_new_name) + len(" ")
+            #assessment_part = text[front:-back]
+            #try:
+            #    old_class, old_imp = re.match(renamed_assessment_re, assessment_part).groups()
+            #except AttributeError:
+            #    logger.error("  Unable to parse old assessment: %s" % assessment_part)
+            #    raise ValueError
         else:
             logger.error("renamed_re unrecognized link count")
             raise ValueError
@@ -290,10 +311,27 @@ def get_entry(project_name, date, item, logger):
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
     
+    m = re.match(removed_paren_re, text)
+    if m:
+        action = "Removed"
+        article_name, = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+
     m = re.match(reassessed_moved_re, text)
     if m:
         action = "Reassessed"
         article_name, old_qual, old_imp, new_qual, new_imp = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+
+    m = re.match(reassessed_ga_re, text)
+    if m:
+        action = "Reassessed"
+        article_name, = m.groups()
+        new_qual = "GA-Class"
         return [
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
@@ -464,13 +502,22 @@ def parse(project_name):
     logger.info("Sortintg results")
     sorted_keys = sorted(entries.keys())
     logger.info("Writing results")
-    quoted_name = urllib.quote(project_name.replace(" ", "_").encode('utf-8'))
-    with open(os.path.join(assessment_file % quoted_name), "wb") as f:
-        f.write((u"\t".join(columns) + u"\n").encode('utf-8'))
-        for k in sorted_keys:
-            entry = entries[k]
-            row = u"\t".join([unicode(x) for x in entry]) + u"\n"
-            f.write(row.encode('utf-8'))
+    quoted_name = urllib.quote(project_name.replace(" ", "_").encode('utf-8'), safe="")
+    assessment_path = os.path.join(assessment_file % quoted_name)
+    try:
+        with open(assessment_path, "wb") as f:
+            try:
+                f.write((u"\t".join(columns) + u"\n").encode('utf-8'))
+                for k in sorted_keys:
+                    entry = entries[k]
+                    row = u"\t".join([unicode(x) for x in entry]) + u"\n"
+                    f.write(row.encode('utf-8'))
+            except IOError:
+                logger.error("Error writing: %s" % str(entry))
+                raise ValueError
+    except IOError:
+        logger.error("Error opening: %s" % assessment_path)
+        raise ValueError
     # Prevent running out of filehandlers if python procrastinates
     try:
         f.close()
@@ -537,7 +584,8 @@ for project_name in sorted(project_names):
         else:
             logger.info("  Parsed successfully")
     except:
-        logger.error(str(sys.exc_info()))
+        logger.error(traceback.format_exc())
+        
     logger.info("  Cleaning up")
     try:
        shutil.rmtree(project_cache_dir)
