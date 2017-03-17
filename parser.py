@@ -89,7 +89,7 @@ added_re = re.compile(
     "(.+) \([^()]*talk[^()]*\) (.+) \((.+)\) added"
 )
 removed_simple_re = re.compile(
-    "(.+) \([^()]*talk[^()]*\) (.+) \((.+)\)\s*removed"
+    "(.*)\s*\([^()]*talk[^()]*\) (.+) \((.+)\)\s*removed"
 )
 removed_re = re.compile(
     "(.+) \([^()]*talk[^()]*\)\s*removed"
@@ -101,13 +101,19 @@ renamed_talk_re = re.compile(
     "(.+) \([^()]*talk[^()]*\) (.+) \((.+)\) renamed to (.+)"
 )
 renamed_simple_talk_re = re.compile(
-    "(.+) \(talk\) renamed to (.+) \(talk\)"
+    "(.+) \([^()]*talk[^()]*\) renamed to (.+) \([^()]*talk[^()]*\)"
 )
 renamed_re = re.compile(
     "(.+) \(.+?\) (.+) \((.+)\) renamed to (.+)"
 )
 renamed_assessment_re = re.compile(
     "(.+) \((.+)\)"
+)
+renamed_moved_talk_re = re.compile(
+    "(.+) ([^()]*talk[^()]*) moved to (.+) ([^()]*talk[^()]*)"
+)
+noaction_re = re.compile (
+    "(.+) \([^()]*talk[^()]*\) (.+) \((.+)\)"
 )
 testing_re = re.compile(
     "Temp bot"
@@ -226,16 +232,22 @@ def get_entry(project_name, date, item, logger):
     
     m = re.match(renamed_simple_talk_re, text)
     if m:
-        links = item.find_all('a')
         action = "Renamed"
-        article_name = links[0].get_text()
-        talk_text = links[1].get_text()
-        article_new_name = links[2].get_text()
+        article_name, article_new_name = m.groups()
+        # We should capture talk, ignoring for now
         return [
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]    
     
     m = re.match(renamed_simple_re, text)
+    if m:
+        action = "Renamed"
+        article_name, article_new_name = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
+    m = re.match(renamed_moved_talk_re, text)
     if m:
         action = "Renamed"
         article_name, article_new_name = m.groups()
@@ -271,6 +283,9 @@ def get_entry(project_name, date, item, logger):
     if m:
         action = "Removed"
         article_name, old_class, old_imp = m.groups()
+        if article_name == "":
+            # Some entries have no article name, weird. Skip them.
+            raise StopIteration
         return [
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
@@ -286,6 +301,11 @@ def get_entry(project_name, date, item, logger):
     m = re.match(testing_re, text)
     if m:
         # We've found testing code, ignore it
+        raise StopIteration
+
+    m = re.match(noaction_re, text)
+    if m:
+        # Some entries have no action, probably bug in bot
         raise StopIteration
 
     logger.error("Unrecognized format: %s" % text)
@@ -485,8 +505,8 @@ except:
     pass
 
 # Only run testing project (should usually be commented out)
-#parse("test")
-#sys.exit()
+parse("test")
+sys.exit()
 
 # Parse all projects
 for project_name in sorted(project_names):
