@@ -81,11 +81,14 @@ reassessed_quote_t_re = re.compile(
 reassessed_moved_re = re.compile(
     "(.+) moved from (.+) \((.+)\) to (.+) \((.+)\)"
 )
+reassessed_moved_simple_re = re.compile(
+    "(.+) moved from (.+) to (.+)"
+)
 added_simple_re = re.compile(
     "(.+) \([^()]*talk[^()]*\) added"
 )
 added_re = re.compile(
-    "(.+) \([^()]*talk[^()]*\) (.+) \((.+)\) added"
+    "(.+) \([^()]*(?:\([^()]*\))[^()]*[tT]alk[^()]*\) (\S+) \((\S+)\) added"
 )
 removed_simple_re = re.compile(
     "(.*)\s*\([^()]*talk[^()]*\) (.+) \((.+)\)\s*removed"
@@ -99,11 +102,15 @@ removed_paren_re = re.compile(
 renamed_simple_re = re.compile(
     "(.+) renamed to (.+)\."
 )
+removed_pertalk_re = re.compile(
+    "(.+) Removed per talk page discussion"
+)
 renamed_talk_re = re.compile(
     "(.+) \([^()]*talk[^()]*\) (.+) \((.+)\) renamed to (.+)"
 )
 renamed_simple_talk_re = re.compile(
-    "(.+) \([^()]*[tT]alk[^()]*(?:\([^()]*\)[^()]*)?\) renamed to (.+) \([^()]*[tT]alk[^()]*(?:\([^()]*\)[^()]*)?\)"
+    "(.+) \([^()]*[tT]alk[^()]*(?:\([^()]*\)[^()]*)?\) renamed to " +
+    "(.+) \([^()]*[tT]alk[^()]*(?:\([^()]*\)[^()]*)?\)"
 )
 renamed_re = re.compile(
     "(.+) \(.+?\) (.+) \((.+)\) renamed to (.+)"
@@ -120,9 +127,18 @@ talk_re = re.compile(
 noaction_re = re.compile (
     "(.+) \([^()]*talk[^()]*\) (.+) \((.+)\)"
 )
+noname_re = re.compile (
+    "\([^()]*[tT]alk[^()]*\)"
+)
 testing_re = re.compile(
     "Temp bot"
 )
+nochange_re = re.compile(
+    "\(No changes today\)"
+)
+to_skip = set([
+    "The Cambridge Declaration assessed- Class (Mid)"
+])
 def get_entry(project_name, date, item, logger):
     text = item.get_text()
     action = ""
@@ -280,6 +296,8 @@ def get_entry(project_name, date, item, logger):
     if m:
         action = "Assessed"
         article_name, new_qual, new_imp = m.groups()
+        # Some articles have leftover wiki markup around the title, remove
+        article_name = article_name.strip("[]")
         return [
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
@@ -319,10 +337,26 @@ def get_entry(project_name, date, item, logger):
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
 
+    m = re.match(removed_pertalk_re, text)
+    if m:
+        action = "Removed"
+        article_name, = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+
     m = re.match(reassessed_moved_re, text)
     if m:
         action = "Reassessed"
         article_name, old_qual, old_imp, new_qual, new_imp = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+
+    m = re.match(reassessed_moved_simple_re, text)
+    if m:
+        action = "Reassessed"
+        article_name, old_qual, new_qual = m.groups()
         return [
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
@@ -346,7 +380,26 @@ def get_entry(project_name, date, item, logger):
         # Some entries have no action, probably bug in bot
         raise StopIteration
 
-    logger.error("Unrecognized format: %s" % text)
+    m = re.match(noname_re, text)
+    if m:
+        # No article name, probably bug in bot, skip
+        raise StopIteration
+
+    m = re.match(nochange_re, text)
+    if m:
+        # No change, skip
+        raise StopIteration
+
+    # One-time bugs
+    if text in to_skip:
+        raise StopIteration
+
+    # Check for entries that are just an article name, skip
+    links = item.find_all('a')
+    if len(links) == 1 and links[0].get_text() == text:
+        raise StopIteration
+
+    logger.error("Unrecognized format: <<%s>>" % text)
     raise ValueError
 
 def parse_date(date_string):
