@@ -26,7 +26,7 @@ done_parse = "output/done_parse/%s"
 assessment_file = "output/assessments/%s.utf8.tsv"
 
 # Test config
-test_only = True
+test_only = False
 test_project = "test"
 
 # Main log
