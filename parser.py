@@ -90,6 +90,9 @@ added_simple_re = re.compile(
 added_re = re.compile(
     "(.+) \([^()]*(?:\([^()]*\))[^()]*[tT]alk[^()]*\) (\S+) \((\S+)\) added"
 )
+created_re = re.compile(
+    "(.+) \([^()]*[tT]alk[^()]*\) Created"
+)
 removed_simple_re = re.compile(
     "(.*)\s*\([^()]*talk[^()]*\) (.+) \((.+)\)\s*removed"
 )
@@ -138,6 +141,8 @@ nochange_re = re.compile(
 )
 to_skip = set([
     "The Cambridge Declaration assessed- Class (Mid)"
+    , "Giovanni Sala ([[Talk:Giovanni S"
+    , "Mubarak Al-Sabah (talk) Reassessment Needed from Stub Class."
 ])
 def get_entry(project_name, date, item, logger):
     text = item.get_text()
@@ -303,6 +308,14 @@ def get_entry(project_name, date, item, logger):
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
     
     m = re.match(added_simple_re, text)
+    if m:
+        action = "Assessed"
+        article_name, = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
+    m = re.match(created_re, text)
     if m:
         action = "Assessed"
         article_name, = m.groups()
@@ -512,12 +525,19 @@ def parse(project_name):
                     #logger.info("  Parsed(skipped) %d(%d) counts in %s" % (entry_count, skip_count, page))
                     break
             
-            if current_tag.name == "h3":
+            if (
+                current_tag.name == "h3"
+                and current_tag.span
+                and current_tag.span.get('class') == ["mw-headline"]
+                and 'id' in current_tag.span.attrs
+                and date_pattern.match(current_tag.span.get('id'))
+            ):
                 date_text = current_tag.span.get_text()
                 try:
                     current_date = parse_date(date_text)
                 except ValueError:
                     logger.error("Unable to parse date: %s" % str(current_tag))
+                    logger.error("    page_id: %d" % page)
                     raise
             elif current_tag.name == "ul":
                 for item in current_tag.find_all('li'):
@@ -605,7 +625,7 @@ except:
     pass
 
 # Only run testing project (should usually be commented out)
-#parse("test")
+#parse("Åland")
 #sys.exit()
 
 # Parse all projects
