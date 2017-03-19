@@ -25,6 +25,10 @@ to_parse = "output/to_parse/%s"
 done_parse = "output/done_parse/%s"
 assessment_file = "output/assessments/%s.utf8.tsv"
 
+# Test config
+test_only = True
+test_project = "test"
+
 # Main log
 logger = logging.getLogger('parser_main')
 handler = logging.FileHandler('output/parser_%s.log' % datetime.now().strftime("%m%dT%H%M"))
@@ -61,7 +65,7 @@ assessed_imp_re = re.compile(
     "Importance assessed as (.+?) \(.+?\)\."
 )
 reassessed_simple_re = re.compile(
-    "(.+) reassessed from (.+) \((.+)\) to (.+) \((.+)\)"
+    "(.+) reassessed from (.+) \((.+)\) to (.+)\s*\((.+)\)"
 )
 reassessed_ga_re = re.compile(
     "(.+) upgraded to good article status"
@@ -154,6 +158,7 @@ testing_re = re.compile(
 nochange_re = re.compile(
     "\(No changes today\)"
 )
+# One-off bot bugs and human edits
 to_skip = set([
     "The Cambridge Declaration assessed- Class (Mid)"
     , "Giovanni Sala ([[Talk:Giovanni S"
@@ -161,6 +166,15 @@ to_skip = set([
     , "[[Ground Zero (2007 film) [1]]] ([[Talk:Ground Zero (2007 film) [2]|talk]]) Stub-Class (Low-Class) removed."
     , "Foie gras, added with class=GA"
     , "Flag of Ecuador cleaned-up, abridged and wikified Kevin McE 01:19, 22 December 2006 (UTC)"
+    , "Achaemenid Empire Still rated as Stub, unassesed"
+    , "NASRIYAUnassessed-Class (No-Class) added"
+    , "& moved back. No reason for the above undiscussed page move, even the edit summary didn't give any reason. Compare prior discussion at Wikipedia talk:Naming conventions (books)#Article title length."
+    , "Songkhla Lake (talk) Mori Riyo added"
+    , "Thomas Viaduct (talk) - Complete overhaul, new content added more images added."
+    , "Šumamice Memomial Pamk menamed to Octobem in Kmagujevac Memomial Pamk."
+    , "Upstate New York r"
+    , "^ A Prisoner’s Reading List, By Alex Halberstadt"
+    , "[[M*A*S*H (novels)]] ([[Talk:M*A*S*H (novels)|talk]]) added, as Unassessed (No-Class)"
 ])
 def get_entry(project_name, date, item, logger):
     text = item.get_text()
@@ -240,6 +254,7 @@ def get_entry(project_name, date, item, logger):
     m = re.match(reassessed_simple_re, text)
     if m:
         action = "Reassessed"
+        text.replace("start-class(", "Start-Class (")
         article_name, old_qual, old_imp, new_qual, new_imp = m.groups()
         return [
             project_name, date, action, article_name, old_qual, new_qual,
@@ -701,8 +716,9 @@ except:
     pass
 
 # Only run testing project (should usually be commented out)
-#parse("test")
-#sys.exit()
+if test_only:
+    parse(test_project)
+    sys.exit()
 
 # Parse all projects
 for project_name in sorted(project_names):
