@@ -650,7 +650,11 @@ for project_name in sorted(project_names):
     project_cache_dir = cache_dir % clean_name
     subprocess.call(["tar", "-xzf", project_cache_tar])
     logger.info("  Beginning parse")
-        
+    try:
+        parse(project_name)
+        logger.info("  Parsed successfully")
+    except:
+        logger.error(traceback.format_exc())
     logger.info("  Cleaning up")
     try:
        shutil.rmtree(project_cache_dir)
