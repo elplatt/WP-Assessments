@@ -74,8 +74,8 @@ for project_name in sorted(project_names):
         report_to_parse.add(project_name)
 
 print "To Crawl (%d)" % len(report_to_crawl)
-for p in report_to_crawl:
+for p in sorted(list(report_to_crawl)):
     print "  %s" % p
 print "To Parse (%d)" % len(report_to_parse)
-for p in report_to_parse:
+for p in sorted(list(report_to_parse)):
     print "  %s" % p
