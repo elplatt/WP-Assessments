@@ -440,14 +440,6 @@ def parse(project_name):
     logger.setLevel(logging.DEBUG)
     logger.info("Beggining parse")
     
-    # Make sure project hasn't already been crawled
-    try:
-        os.stat(done_parse % clean_name)
-        logger.info("Already parsed, skipping")
-        return 1
-    except OSError:
-        pass
-
     entries = {}
     
     # Loop through cached history pages
@@ -604,6 +596,7 @@ def parse(project_name):
     except:
         pass
     logger.info("Project %s complete" % project_name)
+    logger.shutdown()
 
 # Load project names, ignore duplicates
 project_names = []
@@ -625,11 +618,12 @@ except:
     pass
 
 # Only run testing project (should usually be commented out)
-#parse("Åland")
+#parse("test")
 #sys.exit()
 
 # Parse all projects
 for project_name in sorted(project_names):
+    clean_name = clean_name = project_name.replace("/", "_")
     # If the first arg is a project name, skip to that arg
     try:
         if sys.argv[1] > project_name:
@@ -640,24 +634,22 @@ for project_name in sorted(project_names):
     try:
         if sys.argv[2] <= project_name:
             logger.info("Skipping from arg: %s" % project_name)
-            continue
+            break
     except IndexError:
+        pass
+    # Make sure project hasn't already been crawled
+    try:
+        os.stat(done_parse % clean_name)
+        logger.info("Skipping complete: %s" % project_name)
+        continue
+    except OSError:
         pass
     logger.info("Beginning %s" % project_name)
     logger.info("  Decompressing cache")
-    clean_name = clean_name = project_name.replace("/", "_")
     project_cache_tar = cache_tar % clean_name
     project_cache_dir = cache_dir % clean_name
     subprocess.call(["tar", "-xzf", project_cache_tar])
     logger.info("  Beginning parse")
-    try:
-        status = parse(project_name)
-        if status == 1:
-            logger.info("  Already parsed")
-        else:
-            logger.info("  Parsed successfully")
-    except:
-        logger.error(traceback.format_exc())
         
     logger.info("  Cleaning up")
     try:
