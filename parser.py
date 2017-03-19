@@ -51,6 +51,9 @@ cache_re = re.compile(
 assessed_re = re.compile(
     "(.+) \(.+\) assessed."
 )
+assessed_talkafter_re = re.compile(
+    "([^()]+) assessed\."
+)
 assessed_qual_re = re.compile(
     "Quality assessed as (.+?) \(.+?\)\."
 )
@@ -63,8 +66,11 @@ reassessed_simple_re = re.compile(
 reassessed_ga_re = re.compile(
     "(.+) upgraded to good article status"
 )
+reassessed_notalk_re = re.compile(
+    "(.+) reassessed\..+\([^()]* t\)\."
+)
 reassessed_re = re.compile(
-    "(.+) \(talk\) reassessed."
+    "(.+) \(talk\) reassessed\."
 )
 reassessed_qual_re = re.compile(
     "Quality rating changed from (\S+) to (\S+)"
@@ -96,6 +102,12 @@ created_re = re.compile(
 removed_simple_re = re.compile(
     "(.*)\s*\([^()]*talk[^()]*\) (.+) \((.+)\)\s*removed"
 )
+removed_notalk_re = re.compile(
+    "([^()]+) removed\."
+)
+removed_notalk_assessment_re = re.compile(
+    "([^()]+) (\S+-Class) \(([^()]+-Class)\) removed\."
+)
 removed_re = re.compile(
     "(.+) \([^()]*talk[^()]*\)\s*removed"
 )
@@ -107,6 +119,9 @@ renamed_simple_re = re.compile(
 )
 removed_pertalk_re = re.compile(
     "(.+) Removed per talk page discussion"
+)
+renamed_talk_notalk_re = re.compile(
+    "([^()]+) \([^()]*[tT]alk[^()]*\) (\S+-Class) \((\S+-Class)\) renamed to (.+)"
 )
 renamed_talk_re = re.compile(
     "(.+) \([^()]*talk[^()]*\) (.+) \((.+)\) renamed to (.+)"
@@ -143,6 +158,9 @@ to_skip = set([
     "The Cambridge Declaration assessed- Class (Mid)"
     , "Giovanni Sala ([[Talk:Giovanni S"
     , "Mubarak Al-Sabah (talk) Reassessment Needed from Stub Class."
+    , "[[Ground Zero (2007 film) [1]]] ([[Talk:Ground Zero (2007 film) [2]|talk]]) Stub-Class (Low-Class) removed."
+    , "Foie gras, added with class=GA"
+    , "Flag of Ecuador cleaned-up, abridged and wikified Kevin McE 01:19, 22 December 2006 (UTC)"
 ])
 def get_entry(project_name, date, item, logger):
     text = item.get_text()
@@ -204,6 +222,21 @@ def get_entry(project_name, date, item, logger):
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
     
+    m = re.match(reassessed_notalk_re, text)
+    if m:
+        action = "Reassessed"
+        article_name, = m.groups()
+        m = re.search(reassessed_qual_re, text)
+        if m:
+            old_qual, new_qual = m.groups()
+        m = re.search(reassessed_imp_re, text)
+        if m:
+            old_imp, new_imp = m.groups()
+        # Should also get revision and talk link but don't need it now
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
     m = re.match(reassessed_simple_re, text)
     if m:
         action = "Reassessed"
@@ -229,6 +262,24 @@ def get_entry(project_name, date, item, logger):
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
     
+    m = re.match(assessed_talkafter_re, text)
+    if m:
+        action = "Assessed"
+        links = item.find_all('a')
+        article_name = links[0].get_text()
+        text.replace("Stub -Class", "Stub-Class")
+        qual_m = re.search(assessed_qual_re, text)
+        if qual_m:
+            new_qual, = qual_m.groups()
+        imp_m = re.search(assessed_imp_re, text)
+        if imp_m:
+            new_imp, = imp_m.groups()
+        # There will be data for revision and talk links
+        # but this part of the parser hasn't been implemented yet
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
     m = re.match(renamed_talk_re, text)
     if m:
         action = "Renamed"
@@ -237,6 +288,14 @@ def get_entry(project_name, date, item, logger):
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
         
+    m = re.match(renamed_talk_notalk_re, text)
+    if m:
+        action = "Renamed"
+        article_name, old_class, old_imp, article_new_name = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
     m = re.match(renamed_re, text)
     if m:
         links = item.find_all('a')
@@ -342,6 +401,14 @@ def get_entry(project_name, date, item, logger):
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
     
+    m = re.match(removed_notalk_assessment_re, text)
+    if m:
+        action = "Removed"
+        article_name, old_class, old_imp = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+
     m = re.match(removed_paren_re, text)
     if m:
         action = "Removed"
@@ -350,6 +417,14 @@ def get_entry(project_name, date, item, logger):
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
 
+    m = re.match(removed_notalk_re, text)
+    if m:
+        action = "Removed"
+        article_name, = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
     m = re.match(removed_pertalk_re, text)
     if m:
         action = "Removed"
@@ -533,6 +608,11 @@ def parse(project_name):
                     raise
             elif current_tag.name == "ul":
                 for item in current_tag.find_all('li'):
+                    # Skip table of contents
+                    c = item.get('class')
+                    if c and 'toclevel-1' in c:
+                        continue
+                    # Parse the entry
                     try:
                         entry = get_entry(project_name, current_date, item, logger)
                     except ValueError:
@@ -596,8 +676,11 @@ def parse(project_name):
     except:
         pass
     logger.info("Project %s complete" % project_name)
-    logger.shutdown()
-
+    handlers = logger.handlers[:]
+    for handler in handlers:
+        handler.close()
+        logger.removeHandler(handler)
+    
 # Load project names, ignore duplicates
 project_names = []
 unique_names = set()
