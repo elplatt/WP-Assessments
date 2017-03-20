@@ -186,6 +186,7 @@ to_skip = set([
     , "Directed_evolution_(transhumanism) (talk)"
     , "Wikipedia is a fake sorry to break it to u people"
     , "Franconia (wine region) (talk) started new article"
+    , "Hong Kong (talk) Should be either Top or High (Hong Kong has approx. 7 million people and Asia's World City"
 ])
 def get_entry(project_name, date, item, logger):
     text = item.get_text()
