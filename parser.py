@@ -24,6 +24,7 @@ cache_tar = "output/projects_crawled/%s-cache.tgz"
 to_parse = "output/to_parse/%s"
 done_parse = "output/done_parse/%s"
 assessment_file = "output/assessments/%s.utf8.tsv"
+end_timestamp = 1449100800 # 2015-12-03T00:00:00Z
 
 # Test config
 test_only = False
@@ -103,6 +104,9 @@ added_re = re.compile(
 created_re = re.compile(
     "(.+) \([^()]*[tT]alk[^()]*\) Created"
 )
+recreated_re = re.compile(
+    "(.+) \([^()]*[tT]alk[^()]*\) (\S+-Class) recreated"
+)
 removed_simple_re = re.compile(
     "(.*)\s*\([^()]*talk[^()]*\) (.+) \((.+)\)\s*removed"
 )
@@ -171,10 +175,17 @@ to_skip = set([
     , "& moved back. No reason for the above undiscussed page move, even the edit summary didn't give any reason. Compare prior discussion at Wikipedia talk:Naming conventions (books)#Article title length."
     , "Songkhla Lake (talk) Mori Riyo added"
     , "Thomas Viaduct (talk) - Complete overhaul, new content added more images added."
-    , "Šumamice Memomial Pamk menamed to Octobem in Kmagujevac Memomial Pamk."
+    , u"Šumamice Memomial Pamk menamed to Octobem in Kmagujevac Memomial Pamk."
     , "Upstate New York r"
-    , "^ A Prisoner’s Reading List, By Alex Halberstadt"
     , "[[M*A*S*H (novels)]] ([[Talk:M*A*S*H (novels)|talk]]) added, as Unassessed (No-Class)"
+    , u"Vic and Sade - removed, good article but does not fit this project"
+    , u"Human chorionic gonadotropin (Talk:Human chorionic gonadotropin|talk) assessed. Quality assessed as Start-Class (rev ·Importance assessed as Mid-Class (rev · t)."
+    , "Statelessness (talk) Unassessed added"
+    , "Coca-Cola Refreshing Filmmaker's Award requesting first assessment"
+    , "[[Urban Gothic (TV series) [1]]] ([[Talk:Urban Gothic (TV series) [2]|talk]]) Unassessed-Class (No-Class) removed."
+    , "Directed_evolution_(transhumanism) (talk)"
+    , "Wikipedia is a fake sorry to break it to u people"
+    , "Franconia (wine region) (talk) started new article"
 ])
 def get_entry(project_name, date, item, logger):
     text = item.get_text()
@@ -260,22 +271,25 @@ def get_entry(project_name, date, item, logger):
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
     
-    m = re.match(assessed_re, text)
-    if m:
-        action = "Assessed"
-        links = item.find_all('a')
-        article_name = links[0].get_text()
-        qual_m = re.search(assessed_qual_re, text)
-        if qual_m:
-            new_qual, = qual_m.groups()
-        imp_m = re.search(assessed_imp_re, text)
-        if imp_m:
-            new_imp, = imp_m.groups()
-        # There will be data for revision and talk links
-        # but this part of the parser hasn't been implemented yet
-        return [
-            project_name, date, action, article_name, old_qual, new_qual,
-            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    try:
+        m = re.match(assessed_re, text)
+        if m:
+            action = "Assessed"
+            links = item.find_all('a')
+            article_name = links[0].get_text()
+            qual_m = re.search(assessed_qual_re, text)
+            if qual_m:
+                new_qual, = qual_m.groups()
+            imp_m = re.search(assessed_imp_re, text)
+            if imp_m:
+                new_imp, = imp_m.groups()
+            # There will be data for revision and talk links
+            # but this part of the parser hasn't been implemented yet
+            return [
+                project_name, date, action, article_name, old_qual, new_qual,
+                old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    except IndexError:
+        pass
     
     m = re.match(assessed_talkafter_re, text)
     if m:
@@ -397,6 +411,14 @@ def get_entry(project_name, date, item, logger):
             project_name, date, action, article_name, old_qual, new_qual,
             old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
     
+    m = re.match(recreated_re, text)
+    if m:
+        action = "Assessed"
+        article_name, new_qual = m.groups()
+        return [
+            project_name, date, action, article_name, old_qual, new_qual,
+            old_imp, new_imp, article_new_name, article_old_link, talk_old_link]
+    
     m = re.match(removed_re, text)
     if m:
         action = "Removed"
@@ -491,6 +513,10 @@ def get_entry(project_name, date, item, logger):
     m = re.match(nochange_re, text)
     if m:
         # No change, skip
+        raise StopIteration
+
+    if text[0] == "^":
+        # Weirdness in project: New York City
         raise StopIteration
 
     # One-time bugs
@@ -622,6 +648,8 @@ def parse(project_name):
                     logger.error("    page_id: %d" % page)
                     raise
             elif current_tag.name == "ul":
+                if current_date > end_timestamp:
+                    continue
                 for item in current_tag.find_all('li'):
                     # Skip table of contents
                     c = item.get('class')
@@ -643,6 +671,10 @@ def parse(project_name):
                         # Crawl stopped in the middle of multi-page entry
                         # Just skip to the first full entry
                         break
+                    except:
+                        logger.error("  Error parsing: %s" % item.get_text())
+                        logger.error("    page_id: %d" % page)
+                        raise
                     if entry[2] == 0:
                         logger.error("  get_entry() returned without action")
                         logger.error("    page_id: %d" % page)
